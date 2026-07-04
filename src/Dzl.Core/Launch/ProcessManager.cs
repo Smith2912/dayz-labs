@@ -31,7 +31,7 @@ public static class ProcessManager
     public static string ServerExe(DzlConfig c, string mode) => mode == "debug" ? c.ExeDebug : c.ExeNormal;
     public static string ClientExe(DzlConfig c, string mode) => mode == "debug" ? c.ClientExeDebug : c.ClientExeNormal;
 
-    public static Process Spawn(string mode, string target, DzlConfig cfg, string source = "cli", string? configPath = null)
+    public static Process Spawn(string mode, string target, DzlConfig cfg, string source = "cli", string? configPath = null, bool connect = true)
     {
         var exe = target == "server" ? ServerExe(cfg, mode) : ClientExe(cfg, mode);
         // Point the instance's serverDZ.cfg template at its own mission (absolute path) — the engine forces
@@ -46,7 +46,7 @@ public static class ProcessManager
             WorkingDirectory = ArgvBuilder.WorkingDir(cfg, target),
             UseShellExecute = false,
         };
-        foreach (var a in ArgvBuilder.Build(mode, target, cfg)) psi.ArgumentList.Add(a);
+        foreach (var a in ArgvBuilder.Build(mode, target, cfg, connect)) psi.ArgumentList.Add(a);
         var proc = Process.Start(psi) ?? throw new InvalidOperationException($"failed to start {exe}");
         if (configPath is not null) StateFile.Write(configPath, target, proc.Id, mode, source, exe);
         return proc;

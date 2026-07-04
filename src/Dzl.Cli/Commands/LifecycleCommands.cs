@@ -14,15 +14,18 @@ internal static class LifecycleCommands
         var startDebug = new Option<bool>("--debug", () => true, "Debug mode (default).");
         var startNormal = new Option<bool>("--normal", "Normal (release) mode.");
         var startClient = new Option<bool>("--client", "Also start the client.");
+        var startNoConnect = new Option<bool>("--no-connect",
+            "Start the client without -connect: mods + mission load, but the game stays in the main menu.");
         var startDryRun = new Option<bool>("--dry-run", "Print argv, don't spawn.");
         var startCmd = new Command("start", "Start the server (and optionally client).")
-        { startDebug, startNormal, startClient, startDryRun };
+        { startDebug, startNormal, startClient, startNoConnect, startDryRun };
         startCmd.SetHandler(ctx =>
         {
             var (cfg, _, _, configPath) = c.Resolve(ctx);
             var normal = ctx.ParseResult.GetValueForOption(startNormal);
             var mode = normal ? "normal" : "debug";
             var client = ctx.ParseResult.GetValueForOption(startClient);
+            var noConnect = ctx.ParseResult.GetValueForOption(startNoConnect);
             var dryRun = ctx.ParseResult.GetValueForOption(startDryRun);
             if (dryRun)
             {
@@ -33,13 +36,13 @@ internal static class LifecycleCommands
                     var exe = target == "server"
                         ? ProcessManager.ServerExe(cfg, mode)
                         : ProcessManager.ClientExe(cfg, mode);
-                    var args = ArgvBuilder.Build(mode, target, cfg);
+                    var args = ArgvBuilder.Build(mode, target, cfg, connect: !noConnect);
                     Console.WriteLine($"{exe} {string.Join(' ', args)}");
                 }
                 return;
             }
-            new ControlPlane(configPath).StartJson(mode, client, "cli");
-            Console.WriteLine($"started server{(client ? " + client" : "")} ({mode})");
+            new ControlPlane(configPath).StartJson(mode, client, "cli", noConnect);
+            Console.WriteLine($"started server{(client ? $" + client{(noConnect ? " (no connect)" : "")}" : "")} ({mode})");
         });
         return startCmd;
     }

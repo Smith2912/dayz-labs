@@ -36,7 +36,7 @@ public static class IpcMethods
             [ApplyModPreset]  = (s, r) => s.ApplyModPreset(r.Arg("name")),
             [DeleteModPreset] = (s, r) => s.DeleteModPreset(r.Arg("name")),
             [Logs]       = (s, r) => s.Logs(r.Arg("which", "script"), r.ArgInt("lines", 50)),
-            [Start]      = (s, r) => s.Start(r.Arg("mode", "debug"), r.Flag("client"), r.Arg("source", "cli")),
+            [Start]      = (s, r) => s.Start(r.Arg("mode", "debug"), r.Flag("client"), r.Arg("source", "cli"), r.Flag("no_connect")),
             [Stop]       = (s, r) => s.Stop(r.Flag("client")),
             [Restart]    = (s, r) => s.Restart(r.Arg("mode", "debug"), r.Arg("source", "cli")),
         };

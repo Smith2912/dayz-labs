@@ -153,15 +153,17 @@ public sealed class LauncherService
         catch (Exception ex) { return new OpResult(false, ex.Message); }
     }
 
-    public OpResult Start(string mode, bool client, string source = "cli")
+    /// <summary><paramref name="noConnect"/> starts the client with mods + mission but without
+    /// <c>-connect</c>, so it stays in the main menu instead of auto-joining the server.</summary>
+    public OpResult Start(string mode, bool client, string source = "cli", bool noConnect = false)
     {
         var (cfg, _, _) = Resolve();
         AutoLaunchTrayIfWanted(cfg, source);
         return Op(() =>
         {
             ProcessManager.Spawn(mode, "server", cfg, source, _configPath);
-            if (client) ProcessManager.Spawn(mode, "client", cfg, source, _configPath);
-            return $"started server{(client ? " + client" : "")} ({mode})";
+            if (client) ProcessManager.Spawn(mode, "client", cfg, source, _configPath, connect: !noConnect);
+            return $"started server{(client ? $" + client{(noConnect ? " (no connect)" : "")}" : "")} ({mode})";
         });
     }
 
@@ -186,14 +188,16 @@ public sealed class LauncherService
         });
     }
 
-    public OpResult StartTarget(string target, string mode, string source = "tui")
+    /// <summary><paramref name="connect"/> (client only): false drops <c>-connect</c> — the game
+    /// loads mods + mission but stays in the main menu.</summary>
+    public OpResult StartTarget(string target, string mode, string source = "tui", bool connect = true)
     {
         var (cfg, _, _) = Resolve();
         AutoLaunchTrayIfWanted(cfg, source);
         return Op(() =>
         {
-            ProcessManager.Spawn(mode, target, cfg, source, _configPath);
-            return $"started {target} ({mode})";
+            ProcessManager.Spawn(mode, target, cfg, source, _configPath, connect);
+            return $"started {target} ({mode}){(target == "client" && !connect ? " (no connect)" : "")}";
         });
     }
 

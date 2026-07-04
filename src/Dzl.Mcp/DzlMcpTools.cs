@@ -62,8 +62,9 @@ public static class DzlMcpTools
 
     [McpServerTool, Description("Start the server (and optionally the client). mode = debug|normal.")]
     public static string Start([Description("debug|normal")] string mode = "debug",
-                               [Description("also start the client")] bool client = false)
-        => Cp().StartJson(mode, client, "mcp");
+                               [Description("also start the client")] bool client = false,
+                               [Description("start the client without -connect (mods + mission load, game stays in the main menu)")] bool noConnect = false)
+        => Cp().StartJson(mode, client, "mcp", noConnect);
 
     [McpServerTool, Description("Stop the server (and optionally the client).")]
     public static string Stop([Description("also stop the client")] bool client = false) => Cp().StopJson(client);

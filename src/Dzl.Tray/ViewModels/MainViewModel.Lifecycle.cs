@@ -24,6 +24,11 @@ public partial class MainViewModel
     [RelayCommand]
     private void StartClient() => RunOp(() => _svc.StartTarget("client", Mode));
 
+    /// <summary>Start the client without <c>-connect</c>: mods + mission load, the game
+    /// stays in the main menu (diag boots the mission offline) instead of auto-joining.</summary>
+    [RelayCommand]
+    private void StartClientNoConnect() => RunOp(() => _svc.StartTarget("client", Mode, connect: false));
+
     [RelayCommand]
     private void StopClient() => RunOp(() => _svc.StopTarget("client"));
 

@@ -30,8 +30,12 @@ public sealed class ControlPlane
     public string DeleteModPresetJson(string name) => Route(new(IpcMethods.DeleteModPreset, new() { ["name"] = name }));
     public string LogsJson(string which, int lines) =>
         Route(new(IpcMethods.Logs, new() { ["which"] = which, ["lines"] = lines.ToString() }));
-    public string StartJson(string mode, bool client, string source) =>
-        Route(new(IpcMethods.Start, new() { ["mode"] = mode, ["client"] = client.ToString(), ["source"] = source }));
+    public string StartJson(string mode, bool client, string source, bool noConnect = false) =>
+        Route(new(IpcMethods.Start, new()
+        {
+            ["mode"] = mode, ["client"] = client.ToString(), ["source"] = source,
+            ["no_connect"] = noConnect.ToString(),
+        }));
     public string StopJson(bool client) =>
         Route(new(IpcMethods.Stop, new() { ["client"] = client.ToString() }));
     public string RestartJson(string mode, string source) =>

@@ -40,6 +40,24 @@ public class ArgvBuilderTests
     }
 
     [Fact]
+    public void Client_no_connect_drops_only_the_connect_arg()
+    {
+        var a = ArgvBuilder.Build("debug", "client", Sides(), connect: false);
+        string.Join(' ', a).Should().NotContain("-connect");
+        // Everything else stays: mods + mission load, the game just isn't told to join.
+        a.Single(x => x.StartsWith("-mod=")).Should().Contain("@CF").And.Contain("@UI");
+        a.Should().Contain("-mission=./mpmissions/dayzOffline.chernarusplus")
+            .And.Contain("-port=2302")
+            .And.Contain("-name=DevMacie");
+    }
+
+    [Fact]
+    public void Connect_flag_is_ignored_for_the_server()
+        => ArgvBuilder.Build("debug", "server", Sides(), connect: false)
+            .Should().BeEquivalentTo(ArgvBuilder.Build("debug", "server", Sides()),
+                o => o.WithStrictOrdering());
+
+    [Fact]
     public void Profiles_relative_when_under_dayz_else_absolute()
     {
         ArgvBuilder.Build("debug", "server", Sides()).Should().Contain("-profiles=profiles");

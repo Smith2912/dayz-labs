@@ -240,7 +240,10 @@
                 <ui:Button Content="Stop" Appearance="Danger" Icon="{ui:SymbolIcon Stop24}"
                            MinWidth="90" Margin="0,0,8,0" Command="{Binding StopClientCommand}" />
                 <ui:Button Content="Restart" Icon="{ui:SymbolIcon ArrowClockwise24}"
-                           MinWidth="90" Command="{Binding RestartClientCommand}" />
+                           MinWidth="90" Margin="0,0,8,0" Command="{Binding RestartClientCommand}" />
+                <ui:Button Content="Menu only" Icon="{ui:SymbolIcon Play24}"
+                           ToolTip="Start the client without -connect — mods and mission load, but the game stays in the main menu (debug: boots the mission offline)"
+                           Command="{Binding StartClientNoConnectCommand}" />
               </StackPanel>
             </StackPanel>
           </ui:Card>

@@ -53,7 +53,10 @@ public static class ArgvBuilder
     /// value still resolves against the install dir (the engine's current dir).</summary>
     private static string ConfigArg(string configName) => configName;
 
-    public static List<string> Build(string mode, string target, DzlConfig c)
+    /// <summary>Build the launch argv. <paramref name="connect"/> applies to the client only:
+    /// false drops just <c>-connect</c> — mods and mission still load, but the game stays in the
+    /// main menu (DayZDiag boots the mission offline) instead of auto-joining the server.</summary>
+    public static List<string> Build(string mode, string target, DzlConfig c, bool connect = true)
     {
         if (target == "server")
         {
@@ -75,10 +78,10 @@ public static class ArgvBuilder
                 $"-profiles={ProfilesArg(c.ClientProfilesPath, c.DayzPath)}",
                 $"-mod={string.Join(';', ModsForTarget(c, "client"))}",
                 $"-mission={c.Mission}",
-                $"-connect={c.ConnectIp}",
-                $"-port={c.Port}",
-                $"-name={c.PlayerName}",
             };
+            if (connect) a.Add($"-connect={c.ConnectIp}");
+            a.Add($"-port={c.Port}");
+            a.Add($"-name={c.PlayerName}");
             a.AddRange(ParamsFor(c, "client", mode));
             return a;
         }
