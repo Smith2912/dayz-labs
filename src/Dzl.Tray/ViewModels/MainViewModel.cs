@@ -72,7 +72,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     /// <summary>The MCP tool names exposed by <c>Dzl.Mcp.DzlMcpTools</c> (shown on the MCP page).</summary>
     public IReadOnlyList<string> McpTools { get; } = new[]
     {
-        "status", "list_mods", "list_presets", "set_preset", "logs",
+        "status", "list_mods", "list_presets", "set_preset", "list_mod_presets", "save_mod_preset", "apply_mod_preset", "logs",
         "start", "stop", "restart", "list_tools", "open_tool",
         "convert_paa", "pack_pbo", "unbinarize", "work_drive_action",
     };

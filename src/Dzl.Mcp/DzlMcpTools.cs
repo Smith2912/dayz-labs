@@ -35,6 +35,15 @@ public static class DzlMcpTools
     [McpServerTool, Description("Switch the active profile by name.")]
     public static string SetPreset([Description("Preset name")] string name) => Cp().SetPresetJson(name);
 
+    [McpServerTool, Description("List saved mod presets (loadouts); the active server's applied one is flagged.")]
+    public static string ListModPresets() => Cp().ModPresetsJson();
+
+    [McpServerTool, Description("Snapshot the active server's enabled mods as a named loadout (overwrites same name).")]
+    public static string SaveModPreset([Description("Preset name")] string name) => Cp().SaveModPresetJson(name);
+
+    [McpServerTool, Description("Apply a saved mod loadout to the active server (takes effect on next start).")]
+    public static string ApplyModPreset([Description("Preset name")] string name) => Cp().ApplyModPresetJson(name);
+
     [McpServerTool, Description("Read the last N lines of a log: script|rpt|adm|client.")]
     public static string Logs([Description("script|rpt|adm|client")] string which,
                               [Description("How many trailing lines")] int lines = 50)
@@ -290,8 +299,9 @@ public static class DzlMcpTools
     [McpServerTool, Description("Scaffold a new server instance and save it as a preset. Returns Ok, Name, Dir, Port, Message.")]
     public static string NewServer([Description("Instance name")] string name,
                                    [Description("Map name, e.g. chernarus or livonia")] string map = "chernarus",
-                                   [Description("UDP port (auto-assigned if null)")] int? port = null)
-        => DzlJson.Serialize(new ServerService(ConfigPath()).Create(name, map, port));
+                                   [Description("UDP port (auto-assigned if null)")] int? port = null,
+                                   [Description("Apply this saved mod preset (loadout) to the new instance")] string? modPreset = null)
+        => DzlJson.Serialize(new ServerService(ConfigPath()).Create(name, map, port, modPreset: modPreset));
 
     [McpServerTool, Description("List all scaffolded server instances (Name, Dir, CfgPath).")]
     public static string ListServers() => DzlJson.Serialize(new ServerService(ConfigPath()).List());
