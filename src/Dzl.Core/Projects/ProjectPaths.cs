@@ -73,6 +73,9 @@ public static partial class ProjectPaths
     /// <summary>The folder holding all server instances under the projects root.</summary>
     public static string ServersDir(string root) => Path.Combine(root, "servers");
 
+    /// <summary>The folder holding saved mod presets (loadouts) under the projects root.</summary>
+    public static string ModPresetsDir(string root) => Path.Combine(root, "mod-presets");
+
     /// <summary>The folder for one server instance under the projects root.</summary>
     public static string ServerDir(string root, string instance) => Path.Combine(root, "servers", instance);
 
