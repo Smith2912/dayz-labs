@@ -24,6 +24,9 @@ public partial class MainViewModel
     public ObservableCollection<string> ModPresetNames { get; } = new();
     public ObservableCollection<string> ModPresetChoices { get; } = new();
 
+    /// <summary>Rows for the Mods page "Mod presets" card (name + summary + applied flag).</summary>
+    public ObservableCollection<ModPresetRowVm> ModPresetRows { get; } = new();
+
     /// <summary>True while <see cref="LoadModPresets"/> repopulates the combo, so the TwoWay
     /// selection binding doesn't re-apply the loadout during programmatic refresh.</summary>
     private bool _suppressModPresetSwitch;
@@ -35,11 +38,13 @@ public partial class MainViewModel
         {
             ModPresetNames.Clear();
             ModPresetChoices.Clear();
+            ModPresetRows.Clear();
             ModPresetChoices.Add(NoModPresetChoice);
             foreach (var p in ModPresetStore.List(_configPath))
             {
                 ModPresetNames.Add(p.Name);
                 ModPresetChoices.Add(p.Name);
+                ModPresetRows.Add(ModPresetRowVm.From(p, _cfg.ModPreset, ActiveName));
             }
             SelectedModPreset = ModPresetNames.Contains(_cfg.ModPreset) ? _cfg.ModPreset : "";
         }
@@ -52,12 +57,25 @@ public partial class MainViewModel
     partial void OnSelectedModPresetChanged(string value)
     {
         if (_suppressModPresetSwitch || string.IsNullOrEmpty(value)) return;
-        var preset = ModPresetStore.Load(value, _configPath);
+        ApplyModPresetByName(value);
+    }
+
+    /// <summary>Apply a loadout to the active server and reload (shared by the editor combo
+    /// and the Mods page card rows).</summary>
+    private void ApplyModPresetByName(string name)
+    {
+        var preset = ModPresetStore.Load(name, _configPath);
         if (preset is null) return;
         var cfg = _cfg with { Mods = ModPresetStore.Apply(_cfg.Mods, preset), ModPreset = preset.Name };
         Profiles.Save(cfg, ActiveName, _configPath);
         Reload();
         ModPresetStatus = $"✓ applied '{preset.Name}' ({preset.Mods.Count} mods)";
+    }
+
+    [RelayCommand]
+    private void ApplyModPresetRow(ModPresetRowVm? row)
+    {
+        if (row is not null) ApplyModPresetByName(row.Name);
     }
 
     /// <summary>Recompute the "(modified)" hint from the live rows vs the selected preset file.
@@ -104,12 +122,21 @@ public partial class MainViewModel
         RefreshModPresetModified();
     }
 
-    /// <summary>Delete the selected preset (with confirmation). The instance's dangling
-    /// mod_preset pointer is cleared so the combo shows no selection.</summary>
+    /// <summary>Delete the selected preset (bar ⋯ menu).</summary>
     [RelayCommand]
-    private void DeleteModPreset()
+    private void DeleteModPreset() => DeleteModPresetByName(SelectedModPreset);
+
+    /// <summary>Delete a preset from its Mods page card row.</summary>
+    [RelayCommand]
+    private void DeleteModPresetRow(ModPresetRowVm? row)
     {
-        var name = SelectedModPreset;
+        if (row is not null) DeleteModPresetByName(row.Name);
+    }
+
+    /// <summary>Delete a preset (with confirmation). The active instance's dangling
+    /// mod_preset pointer is cleared so the editor combo shows no selection.</summary>
+    private void DeleteModPresetByName(string name)
+    {
         if (string.IsNullOrEmpty(name)) { ModPresetStatus = "✗ no preset selected"; return; }
         var ok = System.Windows.MessageBox.Show(
             $"Delete mod preset \"{name}\"? Server mod lists are not touched.",
@@ -118,7 +145,8 @@ public partial class MainViewModel
         if (!ok) return;
         ModPresetStatus = ModPresetStore.Delete(name, _configPath)
             ? $"✓ deleted mod preset '{name}'" : $"✗ no mod preset '{name}'";
-        Profiles.Save(_cfg with { ModPreset = "" }, ActiveName, _configPath);
+        if (_cfg.ModPreset == name)
+            Profiles.Save(_cfg with { ModPreset = "" }, ActiveName, _configPath);
         Reload();
     }
 }
