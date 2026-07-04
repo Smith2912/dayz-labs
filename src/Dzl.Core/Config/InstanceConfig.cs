@@ -16,6 +16,9 @@ public sealed record InstanceConfig
     public string ConnectIp { get; init; } = "127.0.0.1";
     public List<ModEntry> Mods { get; init; } = new();
     public string Mode { get; init; } = "debug";
+    /// <summary>Name of the last-applied mod preset (loadout) — "" = none. Drives the preset
+    /// combo selection in the UI; a dangling name (preset deleted) is harmless. snake_case: mod_preset.</summary>
+    public string ModPreset { get; init; } = "";
     public List<string> ServerParamsDebug { get; init; } = new() { "-filePatching", "-dologs", "-adminLog", "-freezecheck", "-limitFPS=120" };
     public List<string> ServerParamsNormal { get; init; } = new() { "-dologs", "-adminLog", "-freezecheck" };
     public List<string> ClientParamsDebug { get; init; } = new() { "-window", "-nosplash", "-filePatching", "-doLogs", "-scriptDebug=true" };

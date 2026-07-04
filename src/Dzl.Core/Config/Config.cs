@@ -24,6 +24,9 @@ public sealed record DzlConfig
     public List<ModEntry> Mods { get; init; } = new();
     public List<string> LogsShown { get; init; } = new() { "script", "rpt", "adm", "client" };
     public string Mode { get; init; } = "debug";
+    /// <summary>Name of the last-applied mod preset (loadout) — "" = none. Drives the preset
+    /// combo selection in the UI; a dangling name (preset deleted) is harmless. snake_case: mod_preset.</summary>
+    public string ModPreset { get; init; } = "";
     public int ModWidthIdx { get; init; }
     public List<string> ServerParamsDebug { get; init; } = new() { "-filePatching", "-dologs", "-adminLog", "-freezecheck", "-limitFPS=120" };
     public List<string> ServerParamsNormal { get; init; } = new() { "-dologs", "-adminLog", "-freezecheck" };
@@ -118,6 +121,7 @@ public sealed record DzlConfig
         ConnectIp = ConnectIp,
         Mods = Mods,
         Mode = Mode,
+        ModPreset = ModPreset,
         ServerParamsDebug = ServerParamsDebug,
         ServerParamsNormal = ServerParamsNormal,
         ClientParamsDebug = ClientParamsDebug,
@@ -158,6 +162,7 @@ public sealed record DzlConfig
         ConnectIp = i.ConnectIp,
         Mods = i.Mods,
         Mode = i.Mode,
+        ModPreset = i.ModPreset,
         ServerParamsDebug = i.ServerParamsDebug,
         ServerParamsNormal = i.ServerParamsNormal,
         ClientParamsDebug = i.ClientParamsDebug,
