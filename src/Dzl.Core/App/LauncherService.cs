@@ -3,6 +3,7 @@ using Dzl.Core.Economy;
 using Dzl.Core.Env;
 using Dzl.Core.Launch;
 using Dzl.Core.Logs;
+using Dzl.Core.Mods;
 using Dzl.Core.Projects;
 
 namespace Dzl.Core.App;
@@ -16,6 +17,7 @@ public sealed record StatusReport(
     IReadOnlyDictionary<string, string?> Logs);
 public sealed record ModView(string Path, string Side);
 public sealed record PresetView(string Name, bool Active);
+public sealed record ModPresetView(string Name, int ModCount, bool Active);
 public sealed record LogsResult(string Which, string? Path, IReadOnlyList<string> Lines);
 public sealed record OpResult(bool Ok, string Message);
 
@@ -80,6 +82,51 @@ public sealed class LauncherService
         Profiles.SetActive(name, _configPath);
         return new OpResult(true, $"saved & active: '{name}'");
     }
+
+    // --- Mod presets (loadouts) — named mod lists, independent of server instances ---
+
+    private string ActiveInstanceName()
+    {
+        var (_, _, active) = Resolve();
+        return string.IsNullOrEmpty(active) ? "default" : active;
+    }
+
+    public IReadOnlyList<ModPresetView> ModPresets()
+    {
+        var (cfg, _, _) = Resolve();
+        return ModPresetStore.List(_configPath)
+            .Select(p => new ModPresetView(p.Name, p.Mods.Count, p.Name == cfg.ModPreset)).ToList();
+    }
+
+    /// <summary>Snapshot the active server's enabled mods as a named loadout (overwrites an
+    /// existing preset of the same name) and record it as the instance's applied preset.</summary>
+    public OpResult SaveModPreset(string name)
+    {
+        var (cfg, _, _) = Resolve();
+        var (ok, message) = ModPresetStore.Save(ModPresetStore.FromMods(name, cfg.Mods), _configPath);
+        if (!ok) return new OpResult(false, message);
+        Profiles.Save(cfg with { ModPreset = name.Trim() }, ActiveInstanceName(), _configPath);
+        return new OpResult(true, message);
+    }
+
+    /// <summary>Apply a loadout to the active server: preset mods on (preset order + sides), the
+    /// rest of its list off. Takes effect on the next start, like any mod edit.</summary>
+    public OpResult ApplyModPreset(string name)
+    {
+        var preset = ModPresetStore.Load(name, _configPath);
+        if (preset is null) return new OpResult(false, $"no mod preset '{name}'");
+        var (cfg, _, _) = Resolve();
+        Profiles.Save(cfg with { Mods = ModPresetStore.Apply(cfg.Mods, preset), ModPreset = preset.Name },
+                      ActiveInstanceName(), _configPath);
+        return new OpResult(true, $"applied mod preset '{preset.Name}' ({preset.Mods.Count} mods)");
+    }
+
+    /// <summary>Delete a loadout file. Instances still naming it keep the dangling reference
+    /// (harmless — the UI just shows no selection).</summary>
+    public OpResult DeleteModPreset(string name) =>
+        ModPresetStore.Delete(name, _configPath)
+            ? new OpResult(true, $"deleted mod preset '{name}'")
+            : new OpResult(false, $"no mod preset '{name}'");
 
     public LogsResult Logs(string which, int lines)
     {
