@@ -123,6 +123,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         LoadMods();
         LoadPresets();
+        LoadModPresets();
         RefreshPreview();
 
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1500) };
@@ -192,6 +193,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             LoadMods();
             LoadPresets();
+            LoadModPresets();
         }
         finally
         {

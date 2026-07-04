@@ -119,6 +119,7 @@ public partial class MainViewModel
         ModsView.Refresh();
         OnPropertyChanged(nameof(ModsSummary));
         RefreshPreview();
+        RefreshModPresetModified();
     }
 
     private void RefreshPreview()
