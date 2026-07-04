@@ -4,6 +4,25 @@ All notable changes to dzl are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the app is versioned by
 git tag (`v*`), which the release workflow turns into a Velopack release.
 
+## [0.1.33] - 2026-07-05
+
+### Added
+- **Mod presets (loadouts).** Save your current mod loadout under a name and switch between saved
+  loadouts in one click — or start a brand-new server with one already applied. A preset stores the
+  *enabled* mods (with their load order and server/client side); applying it turns those on in that
+  order and everything else off, taking effect on the next server start.
+  - **Mods page** gets a new "Mod presets" card: every saved preset with a content preview, an
+    *applied* badge showing which one the active server runs, one-click **Apply**, delete, and an
+    inline "save current loadout as…" box.
+  - **Server editor (Mods tab)** gets a preset combo that applies on selection, with a *(modified)*
+    hint when the loadout has drifted from the preset, plus save-as / update / delete.
+  - **New server** form (and `dzl server new --mods <preset>`) can apply a preset to the fresh
+    instance right away.
+  - **CLI**: `dzl modpreset` (list), `modpreset save|apply|rm <name>`. **MCP**: `list_mod_presets`,
+    `save_mod_preset`, `apply_mod_preset` — so Claude can switch loadouts too.
+  - Presets live as plain JSON in `<ProjectsRoot>\mod-presets\` and are shared by all servers;
+    names are case-insensitive.
+
 ## [0.1.32] - 2026-06-30
 
 ### Added
