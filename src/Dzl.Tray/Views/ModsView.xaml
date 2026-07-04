@@ -6,6 +6,7 @@
              xmlns:local="clr-namespace:Dzl.Tray"
              xmlns:vm="clr-namespace:Dzl.Tray.ViewModels"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:ctl="clr-namespace:Dzl.Tray.Controls"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:MainViewModel}">
   <!-- Mods library page (Steam Workshop launcher + discovered library).
@@ -66,13 +67,15 @@
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
               <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="Discovered mods" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding ModsSummary}" FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center"
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
               </StackPanel>
-              <ui:Button Grid.Column="1" Content="Rescan" Icon="{ui:SymbolIcon ArrowSync24}" Command="{Binding RescanCommand}" />
+              <ctl:ModPresetBar Grid.Column="1" Margin="0,0,12,0" />
+              <ui:Button Grid.Column="2" Content="Rescan" Icon="{ui:SymbolIcon ArrowSync24}" Command="{Binding RescanCommand}" />
             </Grid>
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
               <StackPanel>

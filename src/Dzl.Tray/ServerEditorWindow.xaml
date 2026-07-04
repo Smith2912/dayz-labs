@@ -228,14 +228,21 @@
                         PlaceholderText="filter mods…" Icon="{ui:SymbolIcon Search24}"
                         Text="{Binding ModFilter, UpdateSourceTrigger=PropertyChanged}" />
           </Grid>
-          <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
-            <ui:Button Content="Rescan" Icon="{ui:SymbolIcon ArrowSync24}" Margin="0,0,8,0" Command="{Binding RescanCommand}" />
-            <Border Width="1" Margin="4,2,12,2" Background="{DynamicResource ControlElevationBorderBrush}" />
-            <ui:Button Icon="{ui:SymbolIcon ArrowUpload24}" ToolTip="Move to top" Margin="0,0,8,0" Command="{Binding ToTopCommand}" />
-            <ui:Button Icon="{ui:SymbolIcon ArrowUp24}" ToolTip="Move up" Margin="0,0,8,0" Command="{Binding MoveUpCommand}" />
-            <ui:Button Icon="{ui:SymbolIcon ArrowDown24}" ToolTip="Move down" Margin="0,0,8,0" Command="{Binding MoveDownCommand}" />
-            <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" ToolTip="Move to bottom" Command="{Binding ToBottomCommand}" />
-          </StackPanel>
+          <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+              <ui:Button Content="Rescan" Icon="{ui:SymbolIcon ArrowSync24}" Margin="0,0,8,0" Command="{Binding RescanCommand}" />
+              <Border Width="1" Margin="4,2,12,2" Background="{DynamicResource ControlElevationBorderBrush}" />
+              <ui:Button Icon="{ui:SymbolIcon ArrowUpload24}" ToolTip="Move to top" Margin="0,0,8,0" Command="{Binding ToTopCommand}" />
+              <ui:Button Icon="{ui:SymbolIcon ArrowUp24}" ToolTip="Move up" Margin="0,0,8,0" Command="{Binding MoveUpCommand}" />
+              <ui:Button Icon="{ui:SymbolIcon ArrowDown24}" ToolTip="Move down" Margin="0,0,8,0" Command="{Binding MoveDownCommand}" />
+              <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" ToolTip="Move to bottom" Command="{Binding ToBottomCommand}" />
+            </StackPanel>
+            <ctl:ModPresetBar Grid.Column="1" />
+          </Grid>
           <Border Grid.Row="2" CornerRadius="6" BorderThickness="1"
                   BorderBrush="{DynamicResource ControlElevationBorderBrush}"
                   Background="{DynamicResource ControlFillColorDefaultBrush}">
