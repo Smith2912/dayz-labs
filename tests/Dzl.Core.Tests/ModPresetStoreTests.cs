@@ -178,4 +178,16 @@ public class ModPresetStoreTests
         ModPresetStore.Save(new ModPreset { Name = "a<b" }, cfgPath).Ok.Should().BeFalse();
         ModPresetStore.Load("nope", cfgPath).Should().BeNull();
     }
+
+    [Fact]
+    public void Load_is_case_insensitive_and_returns_canonical_on_disk_name()
+    {
+        var cfgPath = TempConfig(out _);
+        ModPresetStore.Save(P((@"P:\@A", "both")) with { Name = "vanilla-plus" }, cfgPath);
+
+        var loaded = ModPresetStore.Load("VANILLA-PLUS", cfgPath);
+
+        loaded.Should().NotBeNull();
+        loaded!.Name.Should().Be("vanilla-plus");
+    }
 }

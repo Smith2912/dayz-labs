@@ -95,7 +95,8 @@ public sealed class LauncherService
     {
         var (cfg, _, _) = Resolve();
         return ModPresetStore.List(_configPath)
-            .Select(p => new ModPresetView(p.Name, p.Mods.Count, p.Name == cfg.ModPreset)).ToList();
+            .Select(p => new ModPresetView(p.Name, p.Mods.Count,
+                string.Equals(p.Name, cfg.ModPreset, StringComparison.OrdinalIgnoreCase))).ToList();
     }
 
     /// <summary>Snapshot the active server's enabled mods as a named loadout (overwrites an

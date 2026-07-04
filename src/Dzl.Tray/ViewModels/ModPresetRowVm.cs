@@ -14,6 +14,7 @@ public sealed record ModPresetRowVm(string Name, int ModCount, string Summary, b
         var summary = p.Mods.Count == 0
             ? "empty"
             : $"{count} · {string.Join(", ", leafs)}{(p.Mods.Count > 3 ? "…" : "")}";
-        return new(p.Name, p.Mods.Count, summary, p.Name == appliedName, $"applied · {serverName}");
+        return new(p.Name, p.Mods.Count, summary,
+            string.Equals(p.Name, appliedName, StringComparison.OrdinalIgnoreCase), $"applied · {serverName}");
     }
 }

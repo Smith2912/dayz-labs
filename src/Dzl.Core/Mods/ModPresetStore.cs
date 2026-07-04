@@ -106,8 +106,16 @@ public static class ModPresetStore
         return result;
     }
 
-    public static ModPreset? Load(string name, string configPath) =>
-        IsValidName(name) ? Read(FileOf(name, configPath)) : null;
+    public static ModPreset? Load(string name, string configPath)
+    {
+        if (!IsValidName(name)) return null;
+        var dir = Dir(configPath);
+        if (!Directory.Exists(dir)) return null;
+        // Resolve the on-disk file so the returned Name carries its canonical casing
+        // (the FS matches case-insensitively; recorded pointers must match List()).
+        var file = Directory.EnumerateFiles(dir, name.Trim() + ".json").FirstOrDefault();
+        return file is null ? null : Read(file);
+    }
 
     // The file name is the identity — a stale "name" field inside the JSON never wins.
     private static ModPreset? Read(string file)

@@ -124,4 +124,17 @@ public class LauncherServiceModPresetTests
         cfg.Mods.Where(m => m.Enabled).Select(m => m.Path)
            .Should().ContainInOrder(@"P:\@CF", @"P:\@VPP");
     }
+
+    [Fact]
+    public void Create_server_with_unknown_mod_preset_reports_it_in_the_message()
+    {
+        var path = Seed(out _);
+
+        var r = new ServerService(path).Create("pvp2", "chernarus", port: 2403,
+            activate: false, baseName: null, modPreset: "no-such-preset");
+
+        r.Ok.Should().BeTrue();
+        r.Message.Should().Contain("no-such-preset").And.Contain("not applied");
+        Profiles.Load("pvp2", path).ModPreset.Should().Be("");
+    }
 }

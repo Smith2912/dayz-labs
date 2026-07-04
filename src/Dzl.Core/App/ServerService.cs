@@ -82,8 +82,13 @@ public sealed class ServerService
         // the new instance inherits the active preset's Mission, which may be an absolute path to ANOTHER
         // instance, so every new server would point at the old one's mpmissions.
         var cfg = ServerPreset.Build(baseCfg, instanceDir, chosenPort) with { Mission = instMission };
-        if (!string.IsNullOrWhiteSpace(modPreset) && ModPresetStore.Load(modPreset!, _configPath) is { } loadout)
-            cfg = cfg with { Mods = ModPresetStore.Apply(cfg.Mods, loadout), ModPreset = loadout.Name };
+        if (!string.IsNullOrWhiteSpace(modPreset))
+        {
+            if (ModPresetStore.Load(modPreset!, _configPath) is { } loadout)
+                cfg = cfg with { Mods = ModPresetStore.Apply(cfg.Mods, loadout), ModPreset = loadout.Name };
+            else
+                sourceNote += $"; mod preset '{modPreset}' not found — not applied";
+        }
         Profiles.Save(cfg, name, _configPath);
         if (activate) Profiles.SetActive(name, _configPath);
 

@@ -46,7 +46,8 @@ public partial class MainViewModel
                 ModPresetChoices.Add(p.Name);
                 ModPresetRows.Add(ModPresetRowVm.From(p, _cfg.ModPreset, ActiveName));
             }
-            SelectedModPreset = ModPresetNames.Contains(_cfg.ModPreset) ? _cfg.ModPreset : "";
+            SelectedModPreset = ModPresetNames.FirstOrDefault(n =>
+                string.Equals(n, _cfg.ModPreset, StringComparison.OrdinalIgnoreCase)) ?? "";
         }
         finally { _suppressModPresetSwitch = false; }
         RefreshModPresetModified();
@@ -93,7 +94,7 @@ public partial class MainViewModel
     {
         var name = NewModPresetName.Trim();
         if (!ModPresetStore.IsValidName(name)) { ModPresetStatus = "✗ enter a valid preset name"; return; }
-        if (ModPresetNames.Contains(name))
+        if (ModPresetNames.Any(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase)))
         {
             var ok = System.Windows.MessageBox.Show(
                 $"Mod preset \"{name}\" already exists. Overwrite it with the current loadout?",
@@ -145,7 +146,7 @@ public partial class MainViewModel
         if (!ok) return;
         ModPresetStatus = ModPresetStore.Delete(name, _configPath)
             ? $"✓ deleted mod preset '{name}'" : $"✗ no mod preset '{name}'";
-        if (_cfg.ModPreset == name)
+        if (string.Equals(_cfg.ModPreset, name, StringComparison.OrdinalIgnoreCase))
             Profiles.Save(_cfg with { ModPreset = "" }, ActiveName, _configPath);
         Reload();
     }
