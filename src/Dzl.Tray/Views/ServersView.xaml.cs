@@ -27,10 +27,12 @@ public partial class ServersView : UserControl
         int? port = int.TryParse(NewServerPortBox.Text.Trim(), out var p) ? p : null;
         var baseSel = NewServerBaseBox.SelectedItem as string;
         var baseName = (string.IsNullOrEmpty(baseSel) || baseSel == MainViewModel.VanillaChoice) ? null : baseSel;
+        var modsSel = NewServerModsBox.SelectedItem as string;
+        var modPreset = (string.IsNullOrEmpty(modsSel) || modsSel == MainViewModel.NoModPresetChoice) ? null : modsSel;
         _creatingServer = true;
         NewServerButton.IsEnabled = false;
         NewServerStatus.Text = "creating… (copying mission template — this can take a moment)";
-        try { NewServerStatus.Text = await Vm.CreateServerAsync(name, map, port, baseName); }
+        try { NewServerStatus.Text = await Vm.CreateServerAsync(name, map, port, baseName, modPreset); }
         catch (Exception ex) { NewServerStatus.Text = "✗ " + ex.Message; }
         finally { NewServerButton.IsEnabled = true; _creatingServer = false; }
         if (NewServerStatus.Text.StartsWith('✓')) { NewServerNameBox.Text = ""; NewServerPortBox.Text = ""; }

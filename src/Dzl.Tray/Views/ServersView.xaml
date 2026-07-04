@@ -38,6 +38,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
               <ui:TextBox x:Name="NewServerNameBox" Grid.Column="0" Margin="0,0,8,0"
                           PlaceholderText="instance name (e.g. pvp, hardcore)" />
@@ -49,9 +50,13 @@
                         VerticalAlignment="Center" ToolTip="Create from a base/template (brings its own map), or the DayZ install"
                         ItemsSource="{Binding BaseChoices}" SelectedIndex="0"
                         SelectionChanged="OnNewServerBaseChanged" />
-              <ui:TextBox x:Name="NewServerPortBox" Grid.Column="3" Width="80" Margin="0,0,8,0"
+              <ComboBox x:Name="NewServerModsBox" Grid.Column="3" Width="150" Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        ToolTip="Optionally apply a saved mod loadout to the new server"
+                        ItemsSource="{Binding ModPresetChoices}" SelectedIndex="0" />
+              <ui:TextBox x:Name="NewServerPortBox" Grid.Column="4" Width="80" Margin="0,0,8,0"
                           PlaceholderText="port (auto)" />
-              <ui:Button x:Name="NewServerButton" Grid.Column="4" Content="Create" Appearance="Primary"
+              <ui:Button x:Name="NewServerButton" Grid.Column="5" Content="Create" Appearance="Primary"
                          Icon="{ui:SymbolIcon Add24}" Click="OnCreateServer" />
             </Grid>
             <TextBlock x:Name="NewServerStatus" FontSize="12" TextWrapping="Wrap"
