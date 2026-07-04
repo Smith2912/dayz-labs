@@ -92,4 +92,18 @@ public class LauncherServiceModPresetTests
         Profiles.ResolveActive(path).cfg.ModPreset.Should().Be("gone");   // dangling by design
         svc.DeleteModPreset("gone").Ok.Should().BeFalse();
     }
+
+    [Fact]
+    public void Ipc_table_dispatches_mod_preset_methods()
+    {
+        Seed(out var svc);
+        Dzl.Core.Ipc.IpcMethods.Table[Dzl.Core.Ipc.IpcMethods.SaveModPreset](
+            svc, new Dzl.Core.Ipc.IpcRequest(Dzl.Core.Ipc.IpcMethods.SaveModPreset,
+                new() { ["name"] = "via-ipc" }));
+
+        var list = (IReadOnlyList<ModPresetView>)Dzl.Core.Ipc.IpcMethods.Table[Dzl.Core.Ipc.IpcMethods.ModPresets](
+            svc, new Dzl.Core.Ipc.IpcRequest(Dzl.Core.Ipc.IpcMethods.ModPresets, null));
+
+        list.Should().ContainSingle(p => p.Name == "via-ipc" && p.ModCount == 2);
+    }
 }

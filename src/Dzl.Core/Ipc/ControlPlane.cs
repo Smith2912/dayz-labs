@@ -24,6 +24,10 @@ public sealed class ControlPlane
     public string PresetsJson() => Route(new(IpcMethods.Presets, null));
     public string SetPresetJson(string name) => Route(new(IpcMethods.SetPreset, new() { ["name"] = name }));
     public string SavePresetJson(string name) => Route(new(IpcMethods.SavePreset, new() { ["name"] = name }));
+    public string ModPresetsJson() => Route(new(IpcMethods.ModPresets, null));
+    public string SaveModPresetJson(string name) => Route(new(IpcMethods.SaveModPreset, new() { ["name"] = name }));
+    public string ApplyModPresetJson(string name) => Route(new(IpcMethods.ApplyModPreset, new() { ["name"] = name }));
+    public string DeleteModPresetJson(string name) => Route(new(IpcMethods.DeleteModPreset, new() { ["name"] = name }));
     public string LogsJson(string which, int lines) =>
         Route(new(IpcMethods.Logs, new() { ["which"] = which, ["lines"] = lines.ToString() }));
     public string StartJson(string mode, bool client, string source) =>

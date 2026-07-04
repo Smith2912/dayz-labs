@@ -14,6 +14,10 @@ public static class IpcMethods
     public const string Presets = "presets";
     public const string SetPreset = "set_preset";
     public const string SavePreset = "save_preset";
+    public const string ModPresets = "mod_presets";
+    public const string SaveModPreset = "save_mod_preset";
+    public const string ApplyModPreset = "apply_mod_preset";
+    public const string DeleteModPreset = "delete_mod_preset";
     public const string Logs = "logs";
     public const string Start = "start";
     public const string Stop = "stop";
@@ -27,6 +31,10 @@ public static class IpcMethods
             [Presets]    = (s, _) => s.Presets(),
             [SetPreset]  = (s, r) => s.SetPreset(r.Arg("name")),
             [SavePreset] = (s, r) => s.SaveActivePresetAs(r.Arg("name")),
+            [ModPresets]      = (s, _) => s.ModPresets(),
+            [SaveModPreset]   = (s, r) => s.SaveModPreset(r.Arg("name")),
+            [ApplyModPreset]  = (s, r) => s.ApplyModPreset(r.Arg("name")),
+            [DeleteModPreset] = (s, r) => s.DeleteModPreset(r.Arg("name")),
             [Logs]       = (s, r) => s.Logs(r.Arg("which", "script"), r.ArgInt("lines", 50)),
             [Start]      = (s, r) => s.Start(r.Arg("mode", "debug"), r.Flag("client"), r.Arg("source", "cli")),
             [Stop]       = (s, r) => s.Stop(r.Flag("client")),
