@@ -1,6 +1,7 @@
 using Dzl.Core.Bases;
 using Dzl.Core.Config;
 using Dzl.Core.Env;
+using Dzl.Core.Mods;
 using Dzl.Core.Projects;
 using Dzl.Core.Servers;
 
@@ -34,7 +35,8 @@ public sealed class ServerService
 
     /// <summary>Scaffold a new server instance (from a base/template if given, else from the DayZ install)
     /// and save it as a preset (atomically), optionally activating it.</summary>
-    public CreateServerResult Create(string name, string map, int? port = null, bool activate = true, string? baseName = null)
+    public CreateServerResult Create(string name, string map, int? port = null, bool activate = true,
+                                     string? baseName = null, string? modPreset = null)
     {
         Profiles.EnsureDefault(_configPath);
         if (!ProjectPaths.IsValidName(name))
@@ -80,6 +82,8 @@ public sealed class ServerService
         // the new instance inherits the active preset's Mission, which may be an absolute path to ANOTHER
         // instance, so every new server would point at the old one's mpmissions.
         var cfg = ServerPreset.Build(baseCfg, instanceDir, chosenPort) with { Mission = instMission };
+        if (!string.IsNullOrWhiteSpace(modPreset) && ModPresetStore.Load(modPreset!, _configPath) is { } loadout)
+            cfg = cfg with { Mods = ModPresetStore.Apply(cfg.Mods, loadout), ModPreset = loadout.Name };
         Profiles.Save(cfg, name, _configPath);
         if (activate) Profiles.SetActive(name, _configPath);
 

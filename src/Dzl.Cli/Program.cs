@@ -17,6 +17,7 @@ Command[] commands =
     LogsStatusCommands.Status(context),
     ConfigCommands.Config(context),
     PresetCommands.Preset(context),
+    ModPresetCommands.ModPreset(context),
     ToolsCommands.Tools(context),
     ToolsCommands.Paa(context),
     ToolsCommands.Pack(context),

@@ -19,7 +19,8 @@ internal static class ServerCommands
         var serverNewPort = new Option<int?>("--port", () => null, "UDP port (auto-assigned if omitted).");
         var serverNewNoActivate = new Option<bool>("--no-activate", "Don't activate the new instance preset.");
         var serverNewBase = new Option<string?>("--base", () => null, "Create from a base/template instead of the DayZ install.");
-        var serverNewCmd = new Command("new", "Scaffold a new server instance.") { serverNewNameArg, serverNewMap, serverNewPort, serverNewNoActivate, serverNewBase };
+        var serverNewMods = new Option<string?>("--mods", () => null, "Apply a saved mod preset (loadout) to the new instance.");
+        var serverNewCmd = new Command("new", "Scaffold a new server instance.") { serverNewNameArg, serverNewMap, serverNewPort, serverNewNoActivate, serverNewBase, serverNewMods };
         serverNewCmd.SetHandler(ctx =>
         {
             var (_, _, _, configPath) = c.Resolve(ctx);
@@ -28,7 +29,8 @@ internal static class ServerCommands
             var port = ctx.ParseResult.GetValueForOption(serverNewPort);
             var noActivate = ctx.ParseResult.GetValueForOption(serverNewNoActivate);
             var baseName = ctx.ParseResult.GetValueForOption(serverNewBase);
-            var r = new ServerService(configPath).Create(name, map, port, activate: !noActivate, baseName: baseName);
+            var modPreset = ctx.ParseResult.GetValueForOption(serverNewMods);
+            var r = new ServerService(configPath).Create(name, map, port, activate: !noActivate, baseName: baseName, modPreset: modPreset);
             if (!r.Ok)
             {
                 CliOut.Fail(ctx, r.Message);

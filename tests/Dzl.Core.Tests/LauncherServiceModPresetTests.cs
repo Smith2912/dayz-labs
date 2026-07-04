@@ -106,4 +106,22 @@ public class LauncherServiceModPresetTests
 
         list.Should().ContainSingle(p => p.Name == "via-ipc" && p.ModCount == 2);
     }
+
+    [Fact]
+    public void Create_server_with_mod_preset_applies_loadout_to_the_new_instance()
+    {
+        var path = Seed(out var svc);
+        svc.SaveModPreset("starter");
+
+        // Seed's DayzPath doesn't exist, so ServerScaffold just notes "mission source not
+        // found" (it never throws); the instance config must still land with the loadout applied.
+        var r = new ServerService(path).Create("pvp", "chernarus", port: 2402,
+            activate: false, baseName: null, modPreset: "starter");
+
+        r.Ok.Should().BeTrue();
+        var cfg = Profiles.Load("pvp", path);
+        cfg.ModPreset.Should().Be("starter");
+        cfg.Mods.Where(m => m.Enabled).Select(m => m.Path)
+           .Should().ContainInOrder(@"P:\@CF", @"P:\@VPP");
+    }
 }
