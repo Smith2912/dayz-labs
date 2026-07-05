@@ -61,6 +61,24 @@ public partial class MainViewModel
     private UiState? _uiStateBacking;
     private UiState UiState => _uiStateBacking ??= UiState.Load(_configPath);
 
+    [ObservableProperty] private string _devToolsStatus = "";
+
+    /// <summary>True when DzlDevTools is bundled in this build (drives the Import button's visibility).</summary>
+    public bool DevToolsAvailable => Dzl.Core.Projects.DevToolsAssets.BundleDir() is not null;
+
+    /// <summary>Deploy the bundled DzlDevTools mod (offline dev tools: object editor, free cam, item
+    /// spawner) into the workspace. Source is editable + rebuildable; the PBO is ready to enable.</summary>
+    [RelayCommand]
+    private void ImportDevTools() => RunOp(() =>
+    {
+        var res = _svc.ImportDevTools();
+        _dispatcher.Invoke(() =>
+        {
+            DevToolsStatus = (res.Ok ? "✓ " : "✗ ") + res.Message;
+            RefreshModProjects();
+        });
+    });
+
     /// <summary>Re-enumerate mod source projects. Called on My Mods page show + after create/import/link.</summary>
     [RelayCommand]
     public void RefreshModProjects()

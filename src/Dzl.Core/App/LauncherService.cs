@@ -288,4 +288,13 @@ public sealed class LauncherService
         var (ok, message) = OfflineInit.Patch(cfg);
         return new OpResult(ok, message);
     }
+
+    /// <summary>Deploy the bundled DzlDevTools mod (source + prebuilt PBO) into the workspace. Opt-in;
+    /// does not touch any instance loadout.</summary>
+    public OpResult ImportDevTools()
+    {
+        var (cfg, _, _) = Resolve();
+        var r = Projects.DevToolsAssets.Deploy(cfg);
+        return new OpResult(r.Ok, r.Message);
+    }
 }

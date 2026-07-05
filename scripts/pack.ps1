@@ -48,6 +48,18 @@ if ((Test-Path $stray) -and ([version](Get-Item $stray).VersionInfo.FileVersion)
 # its config at %LocalAppData%\dzl, and Velopack's uninstall wipes the whole install dir - sharing
 # it with the config dir would delete the user's settings on uninstall. packTitle stays 'dzl' so the
 # Start-menu shortcut / Apps-list entry read 'dzl' (the tool name).
+
+# Bundle the DzlDevTools mod (editable source + prebuilt, unsigned/unbinarized PBO). The app deploys
+# it into the user's workspace on demand (My Mods -> Dev tools); DevToolsAssets.BundleDir looks for
+# it under <install>\assets\DzlDevTools.
+$devTools = Join-Path $root 'assets\DzlDevTools'
+if (-not (Test-Path (Join-Path $devTools 'build\DzlDevTools.pbo'))) {
+  throw "assets\DzlDevTools\build\DzlDevTools.pbo missing - build it (dzl build DzlDevTools --no-binarize) and copy it into assets first"
+}
+$dst = Join-Path $publish 'assets\DzlDevTools'
+New-Item -ItemType Directory -Force -Path $dst | Out-Null
+Copy-Item (Join-Path $devTools '*') $dst -Recurse -Force
+
 if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) { dotnet tool install -g vpk --version 1.2.0 }
 vpk pack --packId DayZLabs --packVersion $Version --packDir $publish --mainExe dzl-tray.exe `
          --packTitle 'dzl' --packAuthors 'DayZ Labs' -o $release

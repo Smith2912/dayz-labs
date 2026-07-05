@@ -75,6 +75,10 @@
                 <ui:Button Content="Add" Icon="{ui:SymbolIcon Add24}" Appearance="Primary"
                            ToolTip="Add a mod — new, import a folder, or clone from GitHub"
                            Margin="0,0,8,0" Click="OnAddMod" />
+                <ui:Button Content="Dev tools" Icon="{ui:SymbolIcon Wrench24}" Margin="0,0,8,0"
+                           ToolTip="Import DzlDevTools — offline dev tools (object editor, free cam, item spawner). Source is editable + rebuildable; enable @DzlDevTools (client) in a loadout to use it."
+                           Visibility="{Binding DevToolsAvailable, Converter={StaticResource BoolToVis}}"
+                           Command="{Binding ImportDevToolsCommand}" />
                 <ui:Button Content="Refresh" Icon="{ui:SymbolIcon ArrowSync24}" Command="{Binding RefreshModProjectsCommand}" />
               </StackPanel>
             </Grid>
