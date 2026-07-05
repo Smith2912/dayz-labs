@@ -47,8 +47,9 @@
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- ===== LEFT: SERVER ===== -->
-        <Grid Grid.Column="0">
+        <!-- ===== LEFT: SERVER ===== (whole column hidden on an offline sandbox) -->
+        <Grid Grid.Column="0"
+              Visibility="{Binding IsOnlineInstance, Converter={StaticResource BoolToVis}}">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />  <!-- control card -->
             <RowDefinition Height="Auto" />  <!-- launch command -->
@@ -212,7 +213,21 @@
         </Grid>
 
         <!-- ===== RIGHT: CLIENT ===== -->
-        <Grid Grid.Column="2">
+        <Grid>
+          <!-- Client column: spans the full page on an offline sandbox (the server column is
+               hidden). Grid.Column set via style, not inline — a local value would beat the trigger. -->
+          <Grid.Style>
+            <Style TargetType="Grid">
+              <Setter Property="Grid.Column" Value="2" />
+              <Setter Property="Grid.ColumnSpan" Value="1" />
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding IsOfflineInstance}" Value="True">
+                  <Setter Property="Grid.Column" Value="0" />
+                  <Setter Property="Grid.ColumnSpan" Value="3" />
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </Grid.Style>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />  <!-- control card -->
             <RowDefinition Height="Auto" />  <!-- launch command -->
