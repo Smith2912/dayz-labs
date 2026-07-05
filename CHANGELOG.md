@@ -4,6 +4,31 @@ All notable changes to dzl are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the app is versioned by
 git tag (`v*`), which the release workflow turns into a Velopack release.
 
+## [0.1.34] - 2026-07-05
+
+### Added
+- **Offline sandbox instances.** Tick *Offline mode* when creating a server and you get a client-only
+  instance — no server, no port, no connect. The dashboard hides the whole server side and the client
+  **Start** button just boots the game locally. On any instance you can now also **Start (offline)**
+  (formerly "Menu only") alongside **Start (online)** — load your mods + mission without joining a
+  server. `dzl server new --offline` and the MCP `new_server` do the same.
+- **Offline mission patch (one click).** A stock DayZ mission doesn't spawn a character when you launch
+  it offline, so the game hangs on load. The dashboard's new **Offline mission** card detects this and
+  the **Patch init.c** button injects a tiny bootstrap (backing up the original) so you drop straight
+  into the world — it wraps the mission's own logic, so it works on any map and is a no-op for real
+  servers. A copy-code button is there as a hand-edit fallback.
+- **Dev tools (offline).** *My Mods → Dev tools* installs **DzlDevTools** into your workspace — an
+  in-game object editor, free camera, teleport and item spawner for offline testing, with rebindable
+  keys in the game's own Controls screen. It ships with the app (editable source + a ready-to-use
+  PBO); enable `@DzlDevTools` (client side) in a mod loadout to use it. (Adapted from Arkensor's
+  DayZ Community Offline Mode, CC BY-NC-SA 4.0.)
+- **Mod presets (loadouts)** — see 0.1.33 below (first release to ship it).
+
+### Changed
+- The **Servers** tab is now **Instances** (it covers offline sandboxes too), and starting a target
+  that's already running is refused instead of spawning a duplicate; the Start/Stop/Restart buttons
+  now enable/disable with the live state.
+
 ## [0.1.33] - 2026-07-05
 
 ### Added
