@@ -158,12 +158,24 @@ public sealed class LauncherService
     private static OpResult? OfflineGuard(DzlConfig cfg) =>
         cfg.OfflineMode ? new OpResult(false, "offline instance has no server — start the client instead") : null;
 
+    /// <summary>A live recorded process for the target blocks a second spawn — a duplicate would
+    /// orphan the first from dzl's tracking (the statefile keeps one PID per target).</summary>
+    private OpResult? AlreadyUpGuard(string target)
+    {
+        var live = StateFile.ReadLive(_configPath, ProcessManager.ImageOf);
+        return live.TryGetValue(target, out var i)
+            ? new OpResult(false, $"{target} already up (pid {i.Pid}, {i.Source}/{i.Mode}) — stop or restart it instead")
+            : null;
+    }
+
     /// <summary><paramref name="noConnect"/> starts the client with mods + mission but without
     /// <c>-connect</c>/<c>-port</c>, so it stays in the main menu instead of auto-joining.</summary>
     public OpResult Start(string mode, bool client, string source = "cli", bool noConnect = false)
     {
         var (cfg, _, _) = Resolve();
         if (OfflineGuard(cfg) is { } blocked) return blocked;
+        if (AlreadyUpGuard("server") is { } up) return up;
+        if (client && AlreadyUpGuard("client") is { } upC) return upC;
         AutoLaunchTrayIfWanted(cfg, source);
         return Op(() =>
         {
@@ -202,6 +214,7 @@ public sealed class LauncherService
     {
         var (cfg, _, _) = Resolve();
         if (target == "server" && OfflineGuard(cfg) is { } blocked) return blocked;
+        if (AlreadyUpGuard(target) is { } up) return up;
         AutoLaunchTrayIfWanted(cfg, source);
         var doConnect = connect && !cfg.OfflineMode;
         return Op(() =>
