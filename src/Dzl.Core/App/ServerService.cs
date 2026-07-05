@@ -26,7 +26,7 @@ public sealed class ServerService
                 var cfg = Profiles.Load(name, _configPath);
                 var cfgPath = cfg.ConfigName;
                 var dir = Path.GetDirectoryName(cfgPath) ?? "";
-                list.Add(new ServerInstance(name, dir, cfgPath));
+                list.Add(new ServerInstance(name, dir, cfgPath, cfg.OfflineMode));
             }
             catch { /* skip unreadable instance */ }
         }

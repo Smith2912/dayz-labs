@@ -2,7 +2,10 @@ using Dzl.Core.Projects;
 
 namespace Dzl.Core.Servers;
 
-public sealed record ServerInstance(string Name, string Dir, string CfgPath);
+/// <summary><paramref name="Offline"/> = client-only offline sandbox (no server). Populated by
+/// <see cref="Dzl.Core.App.ServerService.List"/> (which loads each instance's config); the raw
+/// folder <see cref="Discover"/> path leaves it false.</summary>
+public sealed record ServerInstance(string Name, string Dir, string CfgPath, bool Offline = false);
 
 public static class ServerInstances
 {

@@ -48,7 +48,7 @@ internal static class ServerCommands
         {
             var (_, _, _, configPath) = c.Resolve(ctx);
             var list = new ServerService(configPath).List();
-            CliOut.List(list, "(no servers)", i => $"{i.Name}  {i.Dir}");
+            CliOut.List(list, "(no servers)", i => $"{i.Name}{(i.Offline ? " [offline]" : "")}  {i.Dir}");
         });
         serverCmd.AddCommand(serverLsCmd);
 
