@@ -125,7 +125,8 @@ public partial class MainViewModel
     private void RefreshPreview()
     {
         ServerArgv = ProcessManager.ServerExe(_cfg, Mode) + " " + string.Join(" ", ArgvBuilder.Build(Mode, "server", _cfg));
-        ClientArgv = ProcessManager.ClientExe(_cfg, Mode) + " " + string.Join(" ", ArgvBuilder.Build(Mode, "client", _cfg));
+        // Preview must mirror the real launch: an offline sandbox's client never gets -connect/-port.
+        ClientArgv = ProcessManager.ClientExe(_cfg, Mode) + " " + string.Join(" ", ArgvBuilder.Build(Mode, "client", _cfg, connect: !_cfg.OfflineMode));
         RefreshActiveMods();
         RefreshMissionCheck();
     }
