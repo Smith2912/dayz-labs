@@ -153,11 +153,17 @@ public sealed class LauncherService
         catch (Exception ex) { return new OpResult(false, ex.Message); }
     }
 
+    /// <summary>An offline-sandbox instance has no server — every server op fails fast with
+    /// this instead of spawning anything.</summary>
+    private static OpResult? OfflineGuard(DzlConfig cfg) =>
+        cfg.OfflineMode ? new OpResult(false, "offline instance has no server — start the client instead") : null;
+
     /// <summary><paramref name="noConnect"/> starts the client with mods + mission but without
-    /// <c>-connect</c>, so it stays in the main menu instead of auto-joining the server.</summary>
+    /// <c>-connect</c>/<c>-port</c>, so it stays in the main menu instead of auto-joining.</summary>
     public OpResult Start(string mode, bool client, string source = "cli", bool noConnect = false)
     {
         var (cfg, _, _) = Resolve();
+        if (OfflineGuard(cfg) is { } blocked) return blocked;
         AutoLaunchTrayIfWanted(cfg, source);
         return Op(() =>
         {
@@ -181,6 +187,7 @@ public sealed class LauncherService
     public OpResult Restart(string mode, string source = "cli")
     {
         var (cfg, _, _) = Resolve();
+        if (OfflineGuard(cfg) is { } blocked) return blocked;
         return Op(() =>
         {
             ProcessManager.Restart(mode, cfg, _configPath, source);
@@ -188,16 +195,19 @@ public sealed class LauncherService
         });
     }
 
-    /// <summary><paramref name="connect"/> (client only): false drops <c>-connect</c> — the game
-    /// loads mods + mission but stays in the main menu.</summary>
+    /// <summary><paramref name="connect"/> (client only): false drops <c>-connect</c>/<c>-port</c> —
+    /// the game loads mods + mission but stays in the main menu. On an offline instance the client
+    /// never connects regardless of the flag.</summary>
     public OpResult StartTarget(string target, string mode, string source = "tui", bool connect = true)
     {
         var (cfg, _, _) = Resolve();
+        if (target == "server" && OfflineGuard(cfg) is { } blocked) return blocked;
         AutoLaunchTrayIfWanted(cfg, source);
+        var doConnect = connect && !cfg.OfflineMode;
         return Op(() =>
         {
-            ProcessManager.Spawn(mode, target, cfg, source, _configPath, connect);
-            return $"started {target} ({mode}){(target == "client" && !connect ? " (no connect)" : "")}";
+            ProcessManager.Spawn(mode, target, cfg, source, _configPath, doConnect);
+            return $"started {target} ({mode}){(target == "client" && !doConnect ? " (no connect)" : "")}";
         });
     }
 
@@ -214,6 +224,7 @@ public sealed class LauncherService
     public OpResult RestartTarget(string target, string mode, string source = "tui")
     {
         var (cfg, _, _) = Resolve();
+        if (target == "server" && OfflineGuard(cfg) is { } blocked) return blocked;
         return Op(() =>
         {
             if (target == "server")
@@ -221,7 +232,7 @@ public sealed class LauncherService
             else
             {
                 ProcessManager.Stop(target, cfg, _configPath);
-                ProcessManager.Spawn(mode, target, cfg, source, _configPath);
+                ProcessManager.Spawn(mode, target, cfg, source, _configPath, connect: !cfg.OfflineMode);
             }
             return $"restarted {target} ({mode})";
         });

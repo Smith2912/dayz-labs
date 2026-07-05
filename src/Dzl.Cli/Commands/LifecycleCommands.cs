@@ -1,4 +1,6 @@
 using System.CommandLine;
+using System.CommandLine.Invocation;
+using System.Text.Json;
 using Dzl.Core.Ipc;
 using Dzl.Core.Launch;
 
@@ -7,6 +9,20 @@ namespace Dzl.Cli.Commands;
 /// <summary>start / stop / restart.</summary>
 internal static class LifecycleCommands
 {
+    /// <summary>Print the routed OpResult's real message (and fail the exit code on ok=false)
+    /// instead of fabricating a success line — e.g. an offline instance refuses server starts.</summary>
+    private static void PrintOp(InvocationContext ctx, string json, string fallback)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var ok = doc.RootElement.TryGetProperty("ok", out var o) && o.GetBoolean();
+            var message = doc.RootElement.TryGetProperty("message", out var m) ? m.GetString() : null;
+            if (ok) Console.WriteLine(message ?? fallback);
+            else CliOut.Fail(ctx, message ?? "operation failed");
+        }
+        catch (JsonException) { Console.WriteLine(fallback); }
+    }
     public static Command Start(CliContext c)
     {
         // Intentional no-op: '--debug' is the default mode, so the flag is accepted
@@ -36,13 +52,14 @@ internal static class LifecycleCommands
                     var exe = target == "server"
                         ? ProcessManager.ServerExe(cfg, mode)
                         : ProcessManager.ClientExe(cfg, mode);
-                    var args = ArgvBuilder.Build(mode, target, cfg, connect: !noConnect);
+                    // Mirror the real launch path: an offline instance's client never connects.
+                    var args = ArgvBuilder.Build(mode, target, cfg, connect: !noConnect && !cfg.OfflineMode);
                     Console.WriteLine($"{exe} {string.Join(' ', args)}");
                 }
                 return;
             }
-            new ControlPlane(configPath).StartJson(mode, client, "cli", noConnect);
-            Console.WriteLine($"started server{(client ? $" + client{(noConnect ? " (no connect)" : "")}" : "")} ({mode})");
+            var json = new ControlPlane(configPath).StartJson(mode, client, "cli", noConnect);
+            PrintOp(ctx, json, $"started server{(client ? " + client" : "")} ({mode})");
         });
         return startCmd;
     }
@@ -55,8 +72,8 @@ internal static class LifecycleCommands
         {
             var (_, _, _, configPath) = c.Resolve(ctx);
             var client = ctx.ParseResult.GetValueForOption(stopClient);
-            new ControlPlane(configPath).StopJson(client);
-            Console.WriteLine($"stopped server{(client ? " + client" : "")}");
+            var json = new ControlPlane(configPath).StopJson(client);
+            PrintOp(ctx, json, $"stopped server{(client ? " + client" : "")}");
         });
         return stopCmd;
     }
@@ -72,8 +89,8 @@ internal static class LifecycleCommands
         {
             var (_, _, _, configPath) = c.Resolve(ctx);
             var mode = ctx.ParseResult.GetValueForOption(restartNormal) ? "normal" : "debug";
-            new ControlPlane(configPath).RestartJson(mode, "cli");
-            Console.WriteLine("restarted server");
+            var json = new ControlPlane(configPath).RestartJson(mode, "cli");
+            PrintOp(ctx, json, "restarted server");
         });
         return restartCmd;
     }

@@ -59,6 +59,9 @@
               <ui:Button x:Name="NewServerButton" Grid.Column="5" Content="Create" Appearance="Primary"
                          Icon="{ui:SymbolIcon Add24}" Click="OnCreateServer" />
             </Grid>
+            <CheckBox x:Name="NewServerOfflineBox" Margin="0,0,0,8"
+                      Content="Offline mode — client-only sandbox (no server; the game starts without -connect)"
+                      ToolTip="The instance scaffolds normally, but the dashboard hides the server card and the client always launches offline (mods + mission load, no auto-join)." />
             <TextBlock x:Name="NewServerStatus" FontSize="12" TextWrapping="Wrap"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
           </StackPanel>

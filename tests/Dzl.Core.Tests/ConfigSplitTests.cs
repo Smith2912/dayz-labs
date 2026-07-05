@@ -18,7 +18,7 @@ public class ConfigSplitTests
             Mission = "m", PlayerName = "p", ConfigName = "s.cfg", ConnectIp = "1.2.3.4",
             Mods = new() { new ModEntry { Path = @"P:\@CF", Enabled = true, Side = "server" } },
             Mode = "normal",
-            ModPreset = "vanilla-plus",
+            ModPreset = "vanilla-plus", OfflineMode = true,
             ServerParamsDebug = new() { "-sd" }, ServerParamsNormal = new() { "-sn" },
             ClientParamsDebug = new() { "-cd" }, ClientParamsNormal = new() { "-cn" },
         };

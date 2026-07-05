@@ -40,14 +40,15 @@ public class ArgvBuilderTests
     }
 
     [Fact]
-    public void Client_no_connect_drops_only_the_connect_arg()
+    public void Client_no_connect_drops_connect_and_port()
     {
         var a = ArgvBuilder.Build("debug", "client", Sides(), connect: false);
-        string.Join(' ', a).Should().NotContain("-connect");
+        var joined = string.Join(' ', a);
+        // -port is the connect port; without -connect it's dead weight, so both go.
+        joined.Should().NotContain("-connect").And.NotContain("-port");
         // Everything else stays: mods + mission load, the game just isn't told to join.
         a.Single(x => x.StartsWith("-mod=")).Should().Contain("@CF").And.Contain("@UI");
         a.Should().Contain("-mission=./mpmissions/dayzOffline.chernarusplus")
-            .And.Contain("-port=2302")
             .And.Contain("-name=DevMacie");
     }
 

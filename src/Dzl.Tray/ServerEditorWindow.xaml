@@ -141,11 +141,14 @@
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
               <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="Port" Style="{StaticResource FieldLabel}" />
-                  <local:InfoTip Text="{x:Static local:HelpText.Port}" />
+                <!-- Offline sandbox has no server: the connect port + serverDZ.cfg are meaningless there -->
+                <StackPanel Visibility="{Binding IsOnlineInstance, Converter={StaticResource BoolToVis}}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Port" Style="{StaticResource FieldLabel}" />
+                    <local:InfoTip Text="{x:Static local:HelpText.Port}" />
+                  </StackPanel>
+                  <ui:TextBox x:Name="CfgPort" Margin="0,0,0,10" />
                 </StackPanel>
-                <ui:TextBox x:Name="CfgPort" Margin="0,0,0,10" />
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Text="Mission" Style="{StaticResource FieldLabel}" />
                   <local:InfoTip Text="{x:Static local:HelpText.Mission}" />
@@ -155,15 +158,17 @@
                   <ui:TextBox x:Name="CfgMission" Grid.Column="0" />
                   <ui:Button Grid.Column="1" Content="📁" Margin="8,0,0,0" Click="OnBrowseMission" />
                 </Grid>
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="Config name (serverDZ.cfg)" Style="{StaticResource FieldLabel}" />
-                  <local:InfoTip Text="{x:Static local:HelpText.ConfigName}" />
+                <StackPanel Visibility="{Binding IsOnlineInstance, Converter={StaticResource BoolToVis}}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Config name (serverDZ.cfg)" Style="{StaticResource FieldLabel}" />
+                    <local:InfoTip Text="{x:Static local:HelpText.ConfigName}" />
+                  </StackPanel>
+                  <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <ui:TextBox x:Name="CfgConfigName" Grid.Column="0" />
+                    <ui:Button Grid.Column="1" Content="📁" Margin="8,0,0,0" Click="OnBrowseConfigName" />
+                  </Grid>
                 </StackPanel>
-                <Grid Margin="0,0,0,10">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                  <ui:TextBox x:Name="CfgConfigName" Grid.Column="0" />
-                  <ui:Button Grid.Column="1" Content="📁" Margin="8,0,0,0" Click="OnBrowseConfigName" />
-                </Grid>
                 <TextBlock Text="Mode" Style="{StaticResource FieldLabel}" />
                 <ComboBox x:Name="SrvMode" SelectedIndex="0">
                   <ComboBoxItem Content="debug" />

@@ -31,13 +31,14 @@ public partial class MainViewModel
     /// <paramref name="baseName"/> = a base/template to copy from, or null for the DayZ install.
     /// Returns a status line.</summary>
     public async Task<string> CreateServerAsync(string name, string map, int? port,
-                                                string? baseName = null, string? modPreset = null)
+                                                string? baseName = null, string? modPreset = null,
+                                                bool offline = false)
     {
         var cp = _configPath;
         // The mission-template copy can be hundreds of MB — run it off the UI thread; the
         // active-preset reload + server-list refresh hop back afterward.
         var res = await Task.Run(() => new ServerService(cp).Create(
-            name, map, port, activate: true, baseName: baseName, modPreset: modPreset));
+            name, map, port, activate: true, baseName: baseName, modPreset: modPreset, offline: offline));
         Reload();              // active preset changed → refresh mods/paths/preset list
         RefreshServers();
         return res.Ok ? $"✓ {res.Message}  (port {res.Port})" : $"✗ {res.Message}";

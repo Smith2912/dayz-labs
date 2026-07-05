@@ -36,7 +36,7 @@ public sealed class ServerService
     /// <summary>Scaffold a new server instance (from a base/template if given, else from the DayZ install)
     /// and save it as a preset (atomically), optionally activating it.</summary>
     public CreateServerResult Create(string name, string map, int? port = null, bool activate = true,
-                                     string? baseName = null, string? modPreset = null)
+                                     string? baseName = null, string? modPreset = null, bool offline = false)
     {
         Profiles.EnsureDefault(_configPath);
         if (!ProjectPaths.IsValidName(name))
@@ -81,7 +81,7 @@ public sealed class ServerService
         // Repoint Mission at the new instance. ServerPreset.Build can't (it's pure, no disk) — without this
         // the new instance inherits the active preset's Mission, which may be an absolute path to ANOTHER
         // instance, so every new server would point at the old one's mpmissions.
-        var cfg = ServerPreset.Build(baseCfg, instanceDir, chosenPort) with { Mission = instMission };
+        var cfg = ServerPreset.Build(baseCfg, instanceDir, chosenPort) with { Mission = instMission, OfflineMode = offline };
         if (!string.IsNullOrWhiteSpace(modPreset))
         {
             if (ModPresetStore.Load(modPreset!, _configPath) is { } loadout)

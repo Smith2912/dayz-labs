@@ -301,8 +301,9 @@ public static class DzlMcpTools
     public static string NewServer([Description("Instance name")] string name,
                                    [Description("Map name, e.g. chernarus or livonia")] string map = "chernarus",
                                    [Description("UDP port (auto-assigned if null)")] int? port = null,
-                                   [Description("Apply this saved mod preset (loadout) to the new instance")] string? modPreset = null)
-        => DzlJson.Serialize(new ServerService(ConfigPath()).Create(name, map, port, modPreset: modPreset));
+                                   [Description("Apply this saved mod preset (loadout) to the new instance")] string? modPreset = null,
+                                   [Description("Client-only offline sandbox: no server; client starts without -connect/-port")] bool offline = false)
+        => DzlJson.Serialize(new ServerService(ConfigPath()).Create(name, map, port, modPreset: modPreset, offline: offline));
 
     [McpServerTool, Description("List all scaffolded server instances (Name, Dir, CfgPath).")]
     public static string ListServers() => DzlJson.Serialize(new ServerService(ConfigPath()).List());

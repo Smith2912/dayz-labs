@@ -56,8 +56,9 @@
             <RowDefinition Height="*" />     <!-- active mods (grows) -->
             <RowDefinition Height="Auto" />  <!-- shortcuts -->
           </Grid.RowDefinitions>
-          <!-- Control card -->
-          <ui:Card Grid.Row="0" Margin="0,0,0,12" Padding="16">
+          <!-- Control card (hidden entirely on an offline sandbox — there is no server) -->
+          <ui:Card Grid.Row="0" Margin="0,0,0,12" Padding="16"
+                   Visibility="{Binding IsOnlineInstance, Converter={StaticResource BoolToVis}}">
             <StackPanel>
               <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                 <ui:SymbolIcon Symbol="Server24" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center" />
@@ -243,6 +244,7 @@
                            MinWidth="90" Margin="0,0,8,0" Command="{Binding RestartClientCommand}" />
                 <ui:Button Content="Menu only" Icon="{ui:SymbolIcon Play24}"
                            ToolTip="Start the client without -connect — mods and mission load, but the game stays in the main menu (debug: boots the mission offline)"
+                           Visibility="{Binding IsOnlineInstance, Converter={StaticResource BoolToVis}}"
                            Command="{Binding StartClientNoConnectCommand}" />
               </StackPanel>
             </StackPanel>

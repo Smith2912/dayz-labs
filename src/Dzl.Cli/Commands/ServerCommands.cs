@@ -20,7 +20,9 @@ internal static class ServerCommands
         var serverNewNoActivate = new Option<bool>("--no-activate", "Don't activate the new instance preset.");
         var serverNewBase = new Option<string?>("--base", () => null, "Create from a base/template instead of the DayZ install.");
         var serverNewMods = new Option<string?>("--mods", () => null, "Apply a saved mod preset (loadout) to the new instance.");
-        var serverNewCmd = new Command("new", "Scaffold a new server instance.") { serverNewNameArg, serverNewMap, serverNewPort, serverNewNoActivate, serverNewBase, serverNewMods };
+        var serverNewOffline = new Option<bool>("--offline",
+            "Client-only offline sandbox: no server; the client starts without -connect/-port.");
+        var serverNewCmd = new Command("new", "Scaffold a new server instance.") { serverNewNameArg, serverNewMap, serverNewPort, serverNewNoActivate, serverNewBase, serverNewMods, serverNewOffline };
         serverNewCmd.SetHandler(ctx =>
         {
             var (_, _, _, configPath) = c.Resolve(ctx);
@@ -30,7 +32,8 @@ internal static class ServerCommands
             var noActivate = ctx.ParseResult.GetValueForOption(serverNewNoActivate);
             var baseName = ctx.ParseResult.GetValueForOption(serverNewBase);
             var modPreset = ctx.ParseResult.GetValueForOption(serverNewMods);
-            var r = new ServerService(configPath).Create(name, map, port, activate: !noActivate, baseName: baseName, modPreset: modPreset);
+            var offline = ctx.ParseResult.GetValueForOption(serverNewOffline);
+            var r = new ServerService(configPath).Create(name, map, port, activate: !noActivate, baseName: baseName, modPreset: modPreset, offline: offline);
             if (!r.Ok)
             {
                 CliOut.Fail(ctx, r.Message);

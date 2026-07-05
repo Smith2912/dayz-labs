@@ -28,6 +28,12 @@ public partial class ServerEditorWindow : FluentWindow
             LoadEditor();
             LoadParamsEditor();
             Tabs.SelectedIndex = tab;
+            if (_vm.IsOfflineInstance)
+            {
+                // Offline sandbox has no server — params editing applies to the client only.
+                ParamTarget.SelectedIndex = 1;
+                ParamTarget.IsEnabled = false;
+            }
         };
     }
 

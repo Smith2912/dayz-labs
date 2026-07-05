@@ -82,6 +82,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     partial void OnModeChanged(string value) => OnPropertyChanged(nameof(IsNormalMode));
 
+    /// <summary>True when the active instance is a client-only offline sandbox — the dashboard
+    /// hides the server card and the client always starts without -connect/-port.</summary>
+    public bool IsOfflineInstance => _cfg.OfflineMode;
+
+    /// <summary>Inverse of <see cref="IsOfflineInstance"/> for BoolToVis bindings (server-side UI).</summary>
+    public bool IsOnlineInstance => !_cfg.OfflineMode;
+
     /// <summary>Snapshot of the current config (for the Settings/Params dialogs).</summary>
     public DzlConfig Cfg => _cfg;
 
@@ -162,7 +169,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             ClientUp = r.Client.State == "up";
             ServerStatus = srv;
             ClientStatus = cli;
-            StatusLine = $"mode {r.Mode} · port {r.Port} · preset {(string.IsNullOrEmpty(r.ActivePreset) ? "—" : r.ActivePreset)} · server {srv} · client {cli}";
+            StatusLine = IsOfflineInstance
+                ? $"mode {r.Mode} · offline sandbox · preset {(string.IsNullOrEmpty(r.ActivePreset) ? "—" : r.ActivePreset)} · client {cli}"
+                : $"mode {r.Mode} · port {r.Port} · preset {(string.IsNullOrEmpty(r.ActivePreset) ? "—" : r.ActivePreset)} · server {srv} · client {cli}";
         }
         catch (Exception ex)
         {
@@ -206,6 +215,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ResolvedSigningKey));
         OnPropertyChanged(nameof(ProjectsRoot));
         OnPropertyChanged(nameof(ModsBlocked));
+        OnPropertyChanged(nameof(IsOfflineInstance));
+        OnPropertyChanged(nameof(IsOnlineInstance));
         NotifyWorkshopGate();
         RetailLogs();   // logs follow the active server's profiles
     }

@@ -54,8 +54,9 @@ public static class ArgvBuilder
     private static string ConfigArg(string configName) => configName;
 
     /// <summary>Build the launch argv. <paramref name="connect"/> applies to the client only:
-    /// false drops just <c>-connect</c> — mods and mission still load, but the game stays in the
-    /// main menu (DayZDiag boots the mission offline) instead of auto-joining the server.</summary>
+    /// false drops <c>-connect</c> AND <c>-port</c> (the port is the connect port — dead weight
+    /// without it) — mods and mission still load, but the game stays in the main menu
+    /// (DayZDiag boots the mission offline) instead of auto-joining the server.</summary>
     public static List<string> Build(string mode, string target, DzlConfig c, bool connect = true)
     {
         if (target == "server")
@@ -79,8 +80,11 @@ public static class ArgvBuilder
                 $"-mod={string.Join(';', ModsForTarget(c, "client"))}",
                 $"-mission={c.Mission}",
             };
-            if (connect) a.Add($"-connect={c.ConnectIp}");
-            a.Add($"-port={c.Port}");
+            if (connect)
+            {
+                a.Add($"-connect={c.ConnectIp}");
+                a.Add($"-port={c.Port}");
+            }
             a.Add($"-name={c.PlayerName}");
             a.AddRange(ParamsFor(c, "client", mode));
             return a;

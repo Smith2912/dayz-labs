@@ -27,6 +27,12 @@ public sealed record DzlConfig
     /// <summary>Name of the last-applied mod preset (loadout) — "" = none. Drives the preset
     /// combo selection in the UI; a dangling name (preset deleted) is harmless. snake_case: mod_preset.</summary>
     public string ModPreset { get; init; } = "";
+
+    /// <summary>Client-only offline sandbox: the instance has no server — the dashboard hides the
+    /// server card and the client always starts without -connect/-port (mods + mission load, no
+    /// auto-join). snake_case: offline_mode.</summary>
+    public bool OfflineMode { get; init; }
+
     public int ModWidthIdx { get; init; }
     public List<string> ServerParamsDebug { get; init; } = new() { "-filePatching", "-dologs", "-adminLog", "-freezecheck", "-limitFPS=120" };
     public List<string> ServerParamsNormal { get; init; } = new() { "-dologs", "-adminLog", "-freezecheck" };
@@ -122,6 +128,7 @@ public sealed record DzlConfig
         Mods = Mods,
         Mode = Mode,
         ModPreset = ModPreset,
+        OfflineMode = OfflineMode,
         ServerParamsDebug = ServerParamsDebug,
         ServerParamsNormal = ServerParamsNormal,
         ClientParamsDebug = ClientParamsDebug,
@@ -163,6 +170,7 @@ public sealed record DzlConfig
         Mods = i.Mods,
         Mode = i.Mode,
         ModPreset = i.ModPreset,
+        OfflineMode = i.OfflineMode,
         ServerParamsDebug = i.ServerParamsDebug,
         ServerParamsNormal = i.ServerParamsNormal,
         ClientParamsDebug = i.ClientParamsDebug,

@@ -29,10 +29,11 @@ public partial class ServersView : UserControl
         var baseName = (string.IsNullOrEmpty(baseSel) || baseSel == MainViewModel.VanillaChoice) ? null : baseSel;
         var modsSel = NewServerModsBox.SelectedItem as string;
         var modPreset = (string.IsNullOrEmpty(modsSel) || modsSel == MainViewModel.NoModPresetChoice) ? null : modsSel;
+        var offline = NewServerOfflineBox.IsChecked == true;
         _creatingServer = true;
         NewServerButton.IsEnabled = false;
         NewServerStatus.Text = "creating… (copying mission template — this can take a moment)";
-        try { NewServerStatus.Text = await Vm.CreateServerAsync(name, map, port, baseName, modPreset); }
+        try { NewServerStatus.Text = await Vm.CreateServerAsync(name, map, port, baseName, modPreset, offline); }
         catch (Exception ex) { NewServerStatus.Text = "✗ " + ex.Message; }
         finally { NewServerButton.IsEnabled = true; _creatingServer = false; }
         if (NewServerStatus.Text.StartsWith('✓')) { NewServerNameBox.Text = ""; NewServerPortBox.Text = ""; }
