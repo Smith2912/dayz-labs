@@ -129,6 +129,7 @@ public partial class MainViewModel
         ClientArgv = ProcessManager.ClientExe(_cfg, Mode) + " " + string.Join(" ", ArgvBuilder.Build(Mode, "client", _cfg, connect: !_cfg.OfflineMode));
         RefreshActiveMods();
         RefreshMissionCheck();
+        RefreshOfflineInit();
     }
 
     /// <summary>Rebuild the per-target active-mod lists from the live <see cref="Mods"/> rows

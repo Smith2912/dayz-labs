@@ -272,4 +272,20 @@ public sealed class LauncherService
             return "mission template now points at this instance";
         });
     }
+
+    /// <summary>State of the active offline instance's mission init.c (does it carry the dzl offline
+    /// bootstrap that spawns a character on a lone diag client).</summary>
+    public OfflineInitResult CheckOfflineInit()
+    {
+        var (cfg, _, _) = Resolve();
+        return OfflineInit.Check(cfg);
+    }
+
+    /// <summary>Back up the mission init.c and inject the offline bootstrap.</summary>
+    public OpResult PatchOfflineInit()
+    {
+        var (cfg, _, _) = Resolve();
+        var (ok, message) = OfflineInit.Patch(cfg);
+        return new OpResult(ok, message);
+    }
 }
