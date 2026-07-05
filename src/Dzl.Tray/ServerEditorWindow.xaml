@@ -80,7 +80,7 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <ui:TitleBar Grid.Row="0" Title="{Binding ActivePreset, StringFormat='Server: {0}'}">
+    <ui:TitleBar Grid.Row="0" Title="{Binding ActivePreset, StringFormat='Instance: {0}'}">
       <ui:TitleBar.TrailingContent>
         <ctl:ScreenshotButton VerticalAlignment="Stretch" />
       </ui:TitleBar.TrailingContent>

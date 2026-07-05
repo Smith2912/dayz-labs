@@ -18,9 +18,9 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0" Margin="0,0,0,12">
-      <TextBlock Text="Servers" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="Instances" FontSize="20" FontWeight="SemiBold" />
       <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
-        <Run Text="Each server instance is its own config — its own serverDZ.cfg, profiles, port, params and mod loadout. Select one to make it active and edit it below." />
+        <Run Text="Each instance is its own config — server or offline sandbox, with its own serverDZ.cfg, profiles, port, params and mod loadout. Select one to make it active and edit it below." />
       </TextBlock>
     </StackPanel>
 
@@ -30,7 +30,7 @@
         <!-- New server -->
         <ui:Card Margin="0,0,0,12" Padding="16">
           <StackPanel>
-            <TextBlock Text="New server" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+            <TextBlock Text="New instance" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
             <Grid Margin="0,0,0,8">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
