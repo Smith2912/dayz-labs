@@ -4,7 +4,7 @@ All notable changes to dzl are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the app is versioned by
 git tag (`v*`), which the release workflow turns into a Velopack release.
 
-## [Unreleased]
+## [0.1.35] - 2026-07-08
 
 ### Added
 - **DayZ Server path (normal mode).** Settings → Paths now has a **DayZ Server (normal mode)** field
@@ -332,6 +332,8 @@ git tag (`v*`), which the release workflow turns into a Velopack release.
   actually load (instance / install / missing), read from `serverDZ.cfg`, with a one-click
   "Fix" that repoints the template at the instance's own mission.
 
+[0.1.35]: https://github.com/Borcioo/dayz-labs/releases/tag/v0.1.35
+[0.1.34]: https://github.com/Borcioo/dayz-labs/releases/tag/v0.1.34
 [0.1.32]: https://github.com/Borcioo/dayz-labs/releases/tag/v0.1.32
 [0.1.31]: https://github.com/Borcioo/dayz-labs/releases/tag/v0.1.31
 [0.1.30]: https://github.com/Borcioo/dayz-labs/releases/tag/v0.1.30
