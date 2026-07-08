@@ -54,10 +54,17 @@ public partial class ModuleSettingsWindow : FluentWindow
         }
     }
 
-    private void RefreshSteamStatus() =>
+    private void RefreshSteamStatus()
+    {
+        if (_vm.SteamSignedIn && string.IsNullOrWhiteSpace(_vm.Cfg.SteamLogin))
+        {
+            SteamStatus.Text = "✓ Signed in for Subscribe — enter your Steam username below for Download, then Save.";
+            return;
+        }
         SteamStatus.Text = _vm.SteamSignedIn
-            ? "✓ Signed in — Subscribe works in-app."
+            ? $"✓ Signed in as {_vm.Cfg.SteamLogin} — Subscribe and Download ready."
             : "Not signed in — Subscribe opens the Steam page instead.";
+    }
 
     private void OnBrowse(object sender, RoutedEventArgs e)
     {
@@ -115,8 +122,10 @@ public partial class ModuleSettingsWindow : FluentWindow
     private void OnSteamSignIn(object sender, RoutedEventArgs e)
     {
         new SteamLoginWindow(_vm) { Owner = this }.ShowDialog();
+        _vm.Reload();
         _vm.RefreshSteamAccount();
         _vm.NotifyWorkshopGate();
+        CfgSteamLogin.Text = _vm.Cfg.SteamLogin;
         RefreshSteamStatus();
     }
 

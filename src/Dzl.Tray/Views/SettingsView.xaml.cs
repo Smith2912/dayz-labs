@@ -121,6 +121,7 @@ public partial class SettingsView : UserControl
         if (Vm is null) return;
         var dlg = new SteamLoginWindow(Vm) { Owner = Window.GetWindow(this) };
         dlg.ShowDialog();
+        Vm.Reload();
         Vm.RefreshSteamAccount();
         Reload();   // sign-in auto-fills SteamLogin → reflect it in the steamcmd field
         SteamSignInStatus.Text = Vm.SteamSignedIn ? "✓ Subscribe works in-app" : "not signed in — Subscribe opens the Steam page";
