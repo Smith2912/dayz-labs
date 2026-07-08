@@ -74,6 +74,7 @@ internal static class LogsStatusCommands
             Console.WriteLine($"server:        {Line(report.Server)}");
             Console.WriteLine($"client:        {Line(report.Client)}");
             Console.WriteLine($"dayz:          {report.Paths.GetValueOrDefault("dayz_path")}");
+            Console.WriteLine($"dayz server:   {report.Paths.GetValueOrDefault("dayz_server_path")}");
             Console.WriteLine($"profiles:      {report.Paths.GetValueOrDefault("profiles_path")}");
             Console.WriteLine($"client prof:   {report.Paths.GetValueOrDefault("client_profiles_path")}");
             Console.WriteLine($"config dir:    {report.Paths.GetValueOrDefault("config_dir")}");

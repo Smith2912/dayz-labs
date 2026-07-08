@@ -67,6 +67,17 @@ public class ArgvBuilderTests
     }
 
     [Fact]
+    public void Normal_server_profiles_relative_against_dayz_server_path()
+    {
+        var cfg = Sides() with
+        {
+            DayzServerPath = @"E:\DayZServer",
+            ProfilesPath = @"E:\DayZServer\profiles",
+        };
+        ArgvBuilder.Build("normal", "server", cfg).Should().Contain("-profiles=profiles");
+    }
+
+    [Fact]
     public void Per_mode_params_appended_last()
     {
         var cfg = Sides() with { ServerParamsDebug = new() { "-dbgFlag" }, ServerParamsNormal = new() { "-normFlag" } };
@@ -91,8 +102,15 @@ public class ArgvBuilderTests
     public void WorkingDir_is_install_for_relative_config_and_for_client()
     {
         var cfg = Sides();
-        ArgvBuilder.WorkingDir(cfg, "server").Should().Be(cfg.DayzPath);
-        ArgvBuilder.WorkingDir(cfg, "client").Should().Be(cfg.DayzPath);
+        ArgvBuilder.WorkingDir(cfg, "server", "debug").Should().Be(cfg.DayzPath);
+        ArgvBuilder.WorkingDir(cfg, "client", "debug").Should().Be(cfg.DayzPath);
+    }
+
+    [Fact]
+    public void WorkingDir_normal_server_uses_dayz_server_path_when_set()
+    {
+        var cfg = Sides() with { DayzServerPath = @"E:\DayZServer" };
+        ArgvBuilder.WorkingDir(cfg, "server", "normal").Should().Be(@"E:\DayZServer");
     }
 
     [Fact]
@@ -101,7 +119,7 @@ public class ArgvBuilderTests
         var dir = Directory.CreateTempSubdirectory().FullName;
         File.WriteAllText(Path.Combine(dir, "serverDZ.cfg"), "hostname=\"x\";");
         var cfg = Sides() with { ConfigName = Path.Combine(dir, "serverDZ.cfg") };
-        ArgvBuilder.WorkingDir(cfg, "server").Should().Be(dir);
-        ArgvBuilder.WorkingDir(cfg, "client").Should().Be(cfg.DayzPath);   // client always from install
+        ArgvBuilder.WorkingDir(cfg, "server", "debug").Should().Be(dir);
+        ArgvBuilder.WorkingDir(cfg, "client", "debug").Should().Be(cfg.DayzPath);   // client always from install
     }
 }

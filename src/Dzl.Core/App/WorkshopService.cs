@@ -102,7 +102,7 @@ public sealed class WorkshopService
         if (string.IsNullOrWhiteSpace(r.AccountName)) return;
         var (cfg, _, active) = Profiles.ResolveActive(_configPath);
         if (!string.Equals(cfg.SteamLogin, r.AccountName, StringComparison.OrdinalIgnoreCase))
-            Profiles.Save(cfg with { SteamLogin = r.AccountName }, string.IsNullOrEmpty(active) ? "default" : active, _configPath);
+            GlobalStore.Save(cfg.GlobalPart(active) with { SteamLogin = r.AccountName }, _configPath);
     }
 
     /// <summary>Forget the stored Steam session.</summary>
@@ -149,7 +149,13 @@ public sealed class WorkshopService
         // DayZ Workshop content is owner-gated: an anonymous steamcmd login fails with "Download item … failed
         // (Failure)". Require a Steam account name (auto-filled on sign-in, or set in Settings → Steam).
         if (string.IsNullOrWhiteSpace(cfg.SteamLogin))
-            return new(false, "DayZ Workshop items can't be downloaded anonymously — sign in to Steam (the ⚙ here, or Settings → Accounts) so steamcmd uses your account");
+        {
+            if (SignedIn)
+                return new(false,
+                    "Steam is signed in for Subscribe, but your Steam username isn't saved for steamcmd — open Workshop settings (⚙), enter your Steam username under \"Steam account name\", click Save, then try Download again. Or sign out and sign in again.");
+            return new(false,
+                "DayZ Workshop items can't be downloaded anonymously — sign in to Steam (the ⚙ here, or Settings → Accounts) so steamcmd uses your account");
+        }
         var dir = WorkshopInstallDir();
         return WorkshopCmd.Download(cfg.SteamCmdPath, cfg.SteamLogin, id, dir)
             ? new(true, $"launched steamcmd for {id} as {cfg.SteamLogin} → {WorkshopCmd.ContentDir(dir, id)} — complete any password / Steam Guard prompt in the console window")

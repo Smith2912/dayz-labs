@@ -701,6 +701,7 @@ public partial class SetupWizardWindow : FluentWindow
         {
             DayzPath = dayz,
             DayzToolsPath = tools,
+            DayzServerPath = ServerPathBox.Text?.Trim() ?? "",
             ProjectsRoot = root,   // "" → ProjectPaths.Root resolves to %USERPROFILE%\DayZProjects
             ScanRoots = roots.Count > 0 ? roots : defaults.ScanRoots,
         };

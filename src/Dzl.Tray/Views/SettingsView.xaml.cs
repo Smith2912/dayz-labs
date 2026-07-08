@@ -27,6 +27,7 @@ public partial class SettingsView : UserControl
         var c = Vm.Cfg;
         CfgDayzPath.Text = c.DayzPath;
         CfgDayzToolsPath.Text = c.DayzToolsPath;
+        CfgDayzServerPath.Text = c.DayzServerPath;
         CfgProjectsRoot.Text = c.ProjectsRoot;
         CfgExeDebug.Text = c.ExeDebug;
         CfgExeNormal.Text = c.ExeNormal;
@@ -63,6 +64,7 @@ public partial class SettingsView : UserControl
         {
             DayzPath = CfgDayzPath.Text.Trim(),
             DayzToolsPath = CfgDayzToolsPath.Text.Trim(),
+            DayzServerPath = CfgDayzServerPath.Text.Trim(),
             ProjectsRoot = CfgProjectsRoot.Text.Trim(),
             ExeDebug = CfgExeDebug.Text.Trim(),
             ExeNormal = CfgExeNormal.Text.Trim(),
@@ -119,6 +121,7 @@ public partial class SettingsView : UserControl
         if (Vm is null) return;
         var dlg = new SteamLoginWindow(Vm) { Owner = Window.GetWindow(this) };
         dlg.ShowDialog();
+        Vm.Reload();
         Vm.RefreshSteamAccount();
         Reload();   // sign-in auto-fills SteamLogin → reflect it in the steamcmd field
         SteamSignInStatus.Text = Vm.SteamSignedIn ? "✓ Subscribe works in-app" : "not signed in — Subscribe opens the Steam page";
@@ -208,9 +211,10 @@ public partial class SettingsView : UserControl
         var d = Dzl.Core.Env.EnvDetect.Detect();
         if (!string.IsNullOrWhiteSpace(d.DayzPath)) CfgDayzPath.Text = d.DayzPath;
         if (!string.IsNullOrWhiteSpace(d.ToolsPath)) CfgDayzToolsPath.Text = d.ToolsPath;
-        var found = (d.DayzPath is not null ? 1 : 0) + (d.ToolsPath is not null ? 1 : 0);
+        if (!string.IsNullOrWhiteSpace(d.ServerPath)) CfgDayzServerPath.Text = d.ServerPath;
+        var found = (d.DayzPath is not null ? 1 : 0) + (d.ToolsPath is not null ? 1 : 0) + (d.ServerPath is not null ? 1 : 0);
         System.Windows.MessageBox.Show(
-            found == 0 ? "Couldn't find DayZ or DayZ Tools in your Steam libraries — set the paths manually."
+            found == 0 ? "Couldn't find DayZ, DayZ Tools, or DayZ Server in your Steam libraries — set the paths manually."
                        : $"Filled {found} path(s) from Steam. Review, then Save.",
             "Auto-detect paths", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
     }

@@ -4,6 +4,11 @@ public sealed record DzlConfig
 {
     public string DayzPath { get; init; } = @"E:\Steam\steamapps\common\DayZ";
     public string DayzToolsPath { get; init; } = @"E:\Steam\steamapps\common\DayZ Tools";
+
+    /// <summary>Dedicated DayZ server install (Steam app 223350). Empty = fall back to <see cref="DayzPath"/>.
+    /// snake_case: dayz_server_path.</summary>
+    public string DayzServerPath { get; init; } = "";
+
     public string ProfilesPath { get; init; } = @"E:\Steam\steamapps\common\DayZ\profiles";
     public string ClientProfilesPath { get; init; } = @"E:\Steam\steamapps\common\DayZ\profiles_client";
     /// <summary>Single home for everything dzl creates — mod source projects at
@@ -92,6 +97,7 @@ public sealed record DzlConfig
     {
         DayzPath = DayzPath,
         DayzToolsPath = DayzToolsPath,
+        DayzServerPath = DayzServerPath,
         ProjectsRoot = ProjectsRoot,
         ExeDebug = ExeDebug,
         ExeNormal = ExeNormal,
@@ -140,6 +146,7 @@ public sealed record DzlConfig
     {
         DayzPath = g.DayzPath,
         DayzToolsPath = g.DayzToolsPath,
+        DayzServerPath = g.DayzServerPath,
         ProjectsRoot = g.ProjectsRoot,
         ExeDebug = g.ExeDebug,
         ExeNormal = g.ExeNormal,

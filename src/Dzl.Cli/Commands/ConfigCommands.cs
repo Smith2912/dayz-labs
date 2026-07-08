@@ -75,6 +75,7 @@ internal static class ConfigCommands
                 case "mission": updated = cfg with { Mission = value }; break;
                 case "config_name": updated = cfg with { ConfigName = value }; break;
                 case "dayz_path": updated = cfg with { DayzPath = value }; break;
+                case "dayz_server_path": updated = cfg with { DayzServerPath = value }; break;
                 case "profiles_path": updated = cfg with { ProfilesPath = value }; break;
                 case "client_profiles_path": updated = cfg with { ClientProfilesPath = value }; break;
                 case "projects_root": updated = cfg with { ProjectsRoot = value }; break;
@@ -82,7 +83,7 @@ internal static class ConfigCommands
                     CliOut.Fail(ctx,
                         "unknown/non-editable key '" + key + "'. editable: " +
                         "port, player_name, connect_ip, mission, config_name, " +
-                        "dayz_path, profiles_path, client_profiles_path, projects_root");
+                        "dayz_path, dayz_server_path, profiles_path, client_profiles_path, projects_root");
                     return;
             }
             // Write both slices: globals to config.json, per-server to the active instance file.
@@ -96,6 +97,7 @@ internal static class ConfigCommands
                 "mission" => updated.Mission,
                 "config_name" => updated.ConfigName,
                 "dayz_path" => updated.DayzPath,
+                "dayz_server_path" => updated.DayzServerPath,
                 "profiles_path" => updated.ProfilesPath,
                 "client_profiles_path" => updated.ClientProfilesPath,
                 "projects_root" => updated.ProjectsRoot,

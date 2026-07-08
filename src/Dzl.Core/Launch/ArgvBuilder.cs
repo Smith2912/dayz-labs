@@ -35,15 +35,17 @@ public static class ArgvBuilder
     /// <remarks>DayZ resolves <c>-config</c> and the mission template <b>relative to the working
     /// directory</b> (it rejects an absolute <c>-config</c>). When a server instance keeps its own
     /// <c>serverDZ.cfg</c> at an absolute path (under ProjectsRoot), we run the server <b>from that
-    /// instance dir</b> so its serverDZ.cfg + mpmissions are picked up. Otherwise (and always for the
-    /// client) we use the DayZ install dir.</remarks>
-    public static string WorkingDir(DzlConfig c, string target)
+    /// instance dir</b> so its serverDZ.cfg + mpmissions are picked up. Otherwise the server uses the
+    /// game install (debug) or dedicated server install (normal); the client always uses the game install.</remarks>
+    public static string WorkingDir(DzlConfig c, string target, string mode)
     {
         if (target == "server" && Path.IsPathRooted(c.ConfigName))
         {
             var dir = Path.GetDirectoryName(Path.GetFullPath(c.ConfigName));
             if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) return dir;
         }
+        if (target == "server" && mode == "normal")
+            return ProcessManager.ServerInstallPath(c);
         return c.DayzPath;
     }
 
@@ -63,7 +65,8 @@ public static class ArgvBuilder
         {
             var a = new List<string>();
             if (mode == "debug") a.Add("-server");
-            a.Add($"-profiles={ProfilesArg(c.ProfilesPath, c.DayzPath)}");
+            var profilesBase = mode == "normal" ? ProcessManager.ServerInstallPath(c) : c.DayzPath;
+            a.Add($"-profiles={ProfilesArg(c.ProfilesPath, profilesBase)}");
             a.Add($"-mod={string.Join(';', ModsForTarget(c, "server"))}");
             a.Add($"-config={ConfigArg(c.ConfigName)}");
             a.Add($"-port={c.Port}");

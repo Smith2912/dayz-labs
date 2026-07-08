@@ -31,19 +31,24 @@ public static class ProcessManager
     public static string ServerExe(DzlConfig c, string mode) => mode == "debug" ? c.ExeDebug : c.ExeNormal;
     public static string ClientExe(DzlConfig c, string mode) => mode == "debug" ? c.ClientExeDebug : c.ClientExeNormal;
 
+    /// <summary>Install dir for the dedicated server (normal mode). Falls back to <see cref="DzlConfig.DayzPath"/>.</summary>
+    public static string ServerInstallPath(DzlConfig c) =>
+        string.IsNullOrWhiteSpace(c.DayzServerPath) ? c.DayzPath : c.DayzServerPath.Trim();
+
     public static Process Spawn(string mode, string target, DzlConfig cfg, string source = "cli", string? configPath = null, bool connect = true)
     {
         var exe = target == "server" ? ServerExe(cfg, mode) : ClientExe(cfg, mode);
+        var installDir = target == "server" && mode == "normal" ? ServerInstallPath(cfg) : cfg.DayzPath;
         // Point the instance's serverDZ.cfg template at its own mission (absolute path) — the engine forces
         // $currentdir to the exe dir, so a bare template name would load the install's mission instead.
         if (target == "server" && MissionLocator.Resolve(cfg)?.MissionDir is { } missionDir)
             ServerScaffold.EnsureAbsoluteTemplate(cfg.ConfigName, missionDir);
         var psi = new ProcessStartInfo
         {
-            FileName = Path.Combine(cfg.DayzPath, exe),
+            FileName = Path.Combine(installDir, exe),
             // Server with an absolute instance serverDZ.cfg runs from the instance dir so DayZ resolves
             // its -config + mission there (it rejects absolute -config). Client always from the install.
-            WorkingDirectory = ArgvBuilder.WorkingDir(cfg, target),
+            WorkingDirectory = ArgvBuilder.WorkingDir(cfg, target, mode),
             UseShellExecute = false,
         };
         foreach (var a in ArgvBuilder.Build(mode, target, cfg, connect)) psi.ArgumentList.Add(a);
