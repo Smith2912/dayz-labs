@@ -66,9 +66,9 @@ high-value place to test. Make sure `dotnet test` is green before opening a PR.
 | Branch | Role |
 |---|---|
 | `dev` | Integration — **all pull requests target `dev`** (it's the default branch, so new PRs pick it automatically). |
-| `main` | Stable. Only updated by merging a verified `dev`. Releases are cut from `main` by tagging `v*` (the release workflow builds the Velopack installer from the tag). |
+| `main` | Stable and branch-protected — direct pushes are rejected; it only advances via a `dev` → `main` pull request. Releases are cut from `main` by tagging `v*` (the release workflow builds the Velopack installer from the tag). |
 
-Flow: branch off `dev` → PR into `dev` → maintainer merges `dev` → `main` → tag `v*` on
+Flow: branch off `dev` → PR into `dev` → maintainer PRs `dev` → `main` → tag `v*` on
 `main` to release. PRs opened against `main` will be retargeted to `dev`.
 
 ## Pull requests
