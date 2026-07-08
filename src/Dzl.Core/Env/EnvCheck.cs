@@ -34,6 +34,14 @@ public static class EnvCheck
             return (ok, ok ? p : $"not found: {Show(p)}");
         }));
 
+        // 2b. Server exe (DayZServer — normal mode)
+        items.Add(Check("server_exe_normal", "Server exe (DayZServer)", CheckSeverity.Warning, () =>
+        {
+            var p = Path.Combine(Launch.ProcessManager.ServerInstallPath(cfg), cfg.ExeNormal);
+            var ok = File.Exists(p);
+            return (ok, ok ? p : $"not found: {Show(p)}");
+        }));
+
         // 3. Client exe
         items.Add(Check("client_exe", "Client exe", CheckSeverity.Warning, () =>
         {

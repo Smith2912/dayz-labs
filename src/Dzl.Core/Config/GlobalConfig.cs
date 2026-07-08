@@ -10,6 +10,10 @@ public sealed record GlobalConfig
     public string DayzPath { get; init; } = @"E:\Steam\steamapps\common\DayZ";
     public string DayzToolsPath { get; init; } = @"E:\Steam\steamapps\common\DayZ Tools";
 
+    /// <summary>Dedicated DayZ server install (Steam app 223350). Empty = fall back to <see cref="DayzPath"/>.
+    /// snake_case: dayz_server_path.</summary>
+    public string DayzServerPath { get; init; } = "";
+
     /// <summary>Single home for everything dzl creates — mod source projects at
     /// <c>&lt;ProjectsRoot&gt;\&lt;Mod&gt;</c> and server instances at <c>&lt;ProjectsRoot&gt;\servers\&lt;instance&gt;</c>.
     /// Empty = resolve to <c>%USERPROFILE%\DayZProjects</c> (see <c>ProjectPaths.Root</c>). snake_case: projects_root.</summary>

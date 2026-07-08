@@ -45,6 +45,7 @@ public sealed class LauncherService
         var paths = new Dictionary<string, string>
         {
             ["dayz_path"] = cfg.DayzPath,
+            ["dayz_server_path"] = ProcessManager.ServerInstallPath(cfg),
             ["profiles_path"] = cfg.ProfilesPath,
             ["client_profiles_path"] = cfg.ClientProfilesPath,
             ["config_dir"] = Path.GetDirectoryName(_configPath) ?? ".",

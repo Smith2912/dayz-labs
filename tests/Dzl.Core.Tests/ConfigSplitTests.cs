@@ -10,7 +10,7 @@ public class ConfigSplitTests
         // against forgetting to map a field.
         var d = DzlConfig.Default() with
         {
-            DayzPath = "X:/dz", DayzToolsPath = "X:/tools", ProjectsRoot = "X:/proj",
+            DayzPath = "X:/dz", DayzToolsPath = "X:/tools", DayzServerPath = "X:/server", ProjectsRoot = "X:/proj",
             ExeDebug = "a", ExeNormal = "b", ClientExeDebug = "c", ClientExeNormal = "d",
             ScanRoots = new() { "r1", "r2" }, LogsShown = new() { "script" }, ModWidthIdx = 3,
             EnableAutomationServer = true, AutoLaunchTray = false,
