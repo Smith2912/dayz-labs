@@ -13,6 +13,11 @@ git tag (`v*`), which the release workflow turns into a Velopack release.
   `DayZDiag_x64.exe` from the game install. Blank falls back to the DayZ game folder. Auto-detect
   and the setup wizard persist the path. CLI: `dzl config set dayz_server_path <path>`.
 
+### Changed
+- The env check for the dedicated server exe (`server_exe_normal`) only runs when
+  `dayz_server_path` is set — debug-only setups no longer get a permanent
+  "DayZServer_x64.exe not found" warning.
+
 ## [0.1.34] - 2026-07-05
 
 ### Added

@@ -51,6 +51,25 @@ public class EnvCheckTests
     }
 
     [Fact]
+    public void Server_exe_normal_skipped_when_no_dedicated_server_path()
+    {
+        var items = EnvCheck.Run(CfgIn(Directory.CreateTempSubdirectory().FullName), () => true);
+        items.Should().NotContain(i => i.Key == "server_exe_normal");
+    }
+
+    [Fact]
+    public void Server_exe_normal_checked_when_dedicated_server_path_set()
+    {
+        var server = Directory.CreateTempSubdirectory().FullName;
+        var cfg = CfgIn(Directory.CreateTempSubdirectory().FullName) with { DayzServerPath = server };
+        EnvCheck.Run(cfg, () => true)
+            .Should().Contain(i => i.Key == "server_exe_normal" && !i.Ok && i.Severity == CheckSeverity.Warning);
+
+        File.WriteAllText(Path.Combine(server, "DayZServer_x64.exe"), "");
+        EnvCheck.Run(cfg, () => true).Should().Contain(i => i.Key == "server_exe_normal" && i.Ok);
+    }
+
+    [Fact]
     public void Run_never_throws_on_bad_paths()
     {
         var act = () => EnvCheck.Run(DzlConfig.Default() with { DayzPath = "", ScanRoots = new() { "" } }, () => false);
