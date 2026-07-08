@@ -34,9 +34,11 @@ When it finishes, launch **DayZ Labs** from the Start menu.
 The very first time you open the app, a short setup wizard walks you through getting
 everything connected. Each step:
 
-1. **Confirm your paths** — the wizard tries to find your **DayZ** install and your
-   **DayZ Tools** install. Check that the detected folders are right (or point it at the
-   correct ones).
+1. **Confirm your paths** — the wizard tries to find your **DayZ** install, your
+   **DayZ Tools** install, and (optionally) the separate **DayZ Server** install Steam keeps
+   in its own folder. Check that the detected folders are right (or point it at the correct
+   ones). DayZ Server is only required for **normal** mode; debug mode uses the diagnostic
+   executable from the game folder.
 2. **Pick your main project folder** — this is where your mod projects will live. The
    default is `%USERPROFILE%\DayZProjects`.
 3. **Mount the P: work drive** — DayZ Tools uses a virtual **P:** drive for vanilla game
@@ -53,12 +55,12 @@ You can re-run this wizard any time from **Setup** in the left navigation, near 
 ![The Settings page — accounts and paths](../../../assets/screens/settings.png)
 
 *The Settings page, where the same paths the wizard sets up live. Open it from the bottom of
-the left navigation to review or change your DayZ, DayZ Tools, and Projects folders — there's
-an **Auto-detect** button if you'd rather let the app find them.*
+the left navigation to review or change your DayZ, DayZ Tools, DayZ Server (normal mode), and
+Projects folders — there's an **Auto-detect** button if you'd rather let the app find them.*
 
 If you ever need to fix a path later, that's where to go: **Settings** has tabs for
-**Accounts** (sign in to GitHub and Steam), **Paths** (DayZ install, DayZ Tools, Projects
-root), and **Executables**.
+**Accounts** (sign in to GitHub and Steam), **Paths** (DayZ install, DayZ Tools, DayZ Server
+for normal mode, Projects root), and **Executables**.
 
 ## 3. The Dashboard — launch your server and client
 

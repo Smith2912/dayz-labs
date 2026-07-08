@@ -30,7 +30,8 @@ the session that mounted it. An elevated tray would mount P: in the admin sessio
 
 The first time you launch the tray with no config, a setup wizard runs. It walks you through:
 
-1. Detecting and confirming your DayZ and DayZ Tools install paths.
+1. Detecting and confirming your DayZ and DayZ Tools install paths (and optionally the separate
+   **DayZ Server** install used in normal mode).
 2. Mounting the **P:** work drive.
 3. Extracting vanilla game data (via DayZ Tools).
 4. Scaffolding a server instance (`serverDZ.cfg`, profile folders, a mission copy).
@@ -61,9 +62,10 @@ You can point any frontend at a different file:
 - Environment: set `DZL_CONFIG` to an absolute path.
 - CLI: pass `--config <path>` to any command.
 
-The JSON is snake_case. Presets are full config snapshots stored in `presets/*.json` next to
-the config; the base config's `active_preset` field names the live one. Print the resolved
-path any time with:
+The JSON is snake_case. Global paths include `dayz_path` (game client), `dayz_tools_path`, and
+`dayz_server_path` (dedicated server for normal mode — blank = same as `dayz_path`). Presets are
+full config snapshots stored in `presets/*.json` next to the config; the base config's
+`active_preset` field names the live one. Print the resolved path any time with:
 
 ```powershell
 dotnet run --project src/Dzl.Cli -- config path
@@ -75,14 +77,17 @@ dotnet run --project src/Dzl.Cli -- config path
 dotnet run --project src/Dzl.Cli -- status                 # running state, mode, port, profile, logs
 dotnet run --project src/Dzl.Cli -- mods                   # the ordered mod selection
 dotnet run --project src/Dzl.Cli -- start --client         # server + client, debug mode (default)
-dotnet run --project src/Dzl.Cli -- start --normal         # release mode
+dotnet run --project src/Dzl.Cli -- start --normal         # release mode (DayZServer_x64.exe)
 dotnet run --project src/Dzl.Cli -- start --dry-run        # print argv, don't spawn
 dotnet run --project src/Dzl.Cli -- restart
 dotnet run --project src/Dzl.Cli -- stop --client
 dotnet run --project src/Dzl.Cli -- logs script --lines 100
+dotnet run --project src/Dzl.Cli -- config set dayz_server_path "D:\Steam\steamapps\common\DayZServer"
 ```
 
-`debug` mode launches `DayZDiag_x64.exe`; `normal` mode launches the release executable.
+`debug` mode launches `DayZDiag_x64.exe` from the **DayZ** install. `normal` mode launches
+`DayZServer_x64.exe` from **DayZ Server** (`dayz_server_path`), falling back to the game install
+when that path is blank.
 
 Run `--help` on any command for its full option list.
 

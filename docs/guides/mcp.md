@@ -41,7 +41,7 @@ You can also point `command` at a built `Dzl.Mcp` executable instead of `dotnet 
 
 | Tool | What it does |
 |---|---|
-| `status` | Running state, mode, port, active profile, paths, enabled mods, newest log files. |
+| `status` | Running state, mode, port, active profile, paths (`dayz_path`, `dayz_server_path`, …), enabled mods, newest log files. |
 | `start` | Start the server (and optionally the client). `mode` = `debug` \| `normal`. |
 | `stop` | Stop the server (and optionally the client). |
 | `restart` | Restart the server. `mode` = `debug` \| `normal`. |

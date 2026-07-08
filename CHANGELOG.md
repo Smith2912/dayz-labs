@@ -4,6 +4,15 @@ All notable changes to dzl are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the app is versioned by
 git tag (`v*`), which the release workflow turns into a Velopack release.
 
+## [Unreleased]
+
+### Added
+- **DayZ Server path (normal mode).** Settings → Paths now has a **DayZ Server (normal mode)** field
+  (`dayz_server_path` in config) for the separate Steam dedicated-server install
+  (`...\DayZServer`). Normal mode launches `DayZServer_x64.exe` from there; debug mode still uses
+  `DayZDiag_x64.exe` from the game install. Blank falls back to the DayZ game folder. Auto-detect
+  and the setup wizard persist the path. CLI: `dzl config set dayz_server_path <path>`.
+
 ## [0.1.34] - 2026-07-05
 
 ### Added

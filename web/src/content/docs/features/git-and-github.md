@@ -26,7 +26,7 @@ push on your behalf.
 
 ![The Settings page — accounts and paths](../../../assets/screens/settings.png)
 
-*Sign in to GitHub under Settings → Accounts. The same page holds your DayZ, DayZ Tools, and Projects paths.*
+*Sign in to GitHub under Settings → Accounts. The same page holds your DayZ, DayZ Tools, DayZ Server (normal mode), and Projects paths.*
 
 ## What you can do
 

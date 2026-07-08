@@ -35,10 +35,13 @@ Each card has the same three buttons — **Start**, **Stop**, and **Restart** �
 
 At the top of the Dashboard is a **Mode** toggle:
 
-- **Debug** launches DayZ's `DayZDiag` executable. This is the one you want while developing
-  — it writes the script log, so you can see your `Print()` output and catch script errors.
-- **Normal** launches the regular release build, for checking how your mod behaves the way
-  players will actually run it.
+- **Debug** launches DayZ's `DayZDiag` executable from your **DayZ** game install. This is the
+  one you want while developing — it writes the script log, so you can see your `Print()` output
+  and catch script errors.
+- **Normal** launches `DayZServer_x64.exe` from your **DayZ Server** install (a separate Steam
+  app, usually in `...\DayZServer`). Use this to check how your mod behaves the way players will
+  actually run it. Set the path under **Settings → Paths → DayZ Server (normal mode)**; leave it
+  blank only if your dedicated server files live inside the game folder.
 
 Flip the toggle and the launch-command preview on each card updates instantly to match.
 

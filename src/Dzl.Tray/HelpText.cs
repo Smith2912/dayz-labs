@@ -68,7 +68,10 @@ public static class HelpText
         "MCP (Model Context Protocol) lets Claude Code control dzl in natural language. Register the dzl MCP server in Claude, then ask it to start the server, read logs, pack PBOs, etc.";
 
     public const string DiagServer =
-        "In development you don't need the separate dedicated DayZ Server: DayZDiag_x64.exe -server IS the server, with hot-reload. The dedicated DayZServer (from Steam) is only for production hosting.";
+        "In development you don't need the separate dedicated DayZ Server: DayZDiag_x64.exe -server IS the server, with hot-reload. The dedicated DayZ Server (from Steam, usually in a separate DayZServer folder) is what Normal mode launches for production-style testing.";
+
+    public const string DayzServerPath =
+        "The dedicated DayZ Server install from Steam (app 223350 — usually ...\\steamapps\\common\\DayZServer). Normal mode launches DayZServer_x64.exe from here. Leave blank to fall back to the DayZ game folder. Debug mode always uses DayZDiag from the game install.";
 
     public const string Scaffold =
         "Scaffolds a runnable server instance: writes a dev serverDZ.cfg (if absent), creates the profiles/ and profiles_client/ folders, and copies the mission so the server has something to load.";

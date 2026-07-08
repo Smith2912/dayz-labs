@@ -36,9 +36,9 @@ instances, and keys live), and scaffolds a server instance.
 
 ## What it does
 
-- **Server / client lifecycle** — start, stop, restart the dev server and client in `debug` (DayZDiag)
-  or `normal` (release) mode. Spawned PIDs are tracked so a recycled PID is never mistaken for a live
-  server.
+- **Server / client lifecycle** — start, stop, restart the dev server and client in `debug` (DayZDiag
+  from the game install) or `normal` (`DayZServer_x64.exe` from the separate DayZ Server install).
+  Spawned PIDs are tracked so a recycled PID is never mistaken for a live server.
 - **Ordered mods + named presets** — an ordered mod selection where each mod is tagged
   `both` / `server` / `client` (server-only mods go to `-serverMod`, the rest to `-mod`). Full config
   snapshots are saved as named presets you can switch between.
