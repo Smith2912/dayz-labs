@@ -61,8 +61,19 @@ frontend (CLI, MCP, tray). See [CLAUDE.md](CLAUDE.md) for the full architecture 
 Add or update tests for any behaviour change — the pure helpers are the easy,
 high-value place to test. Make sure `dotnet test` is green before opening a PR.
 
+## Branch model
+
+| Branch | Role |
+|---|---|
+| `dev` | Integration — **all pull requests target `dev`** (it's the default branch, so new PRs pick it automatically). |
+| `main` | Stable. Only updated by merging a verified `dev`. Releases are cut from `main` by tagging `v*` (the release workflow builds the Velopack installer from the tag). |
+
+Flow: branch off `dev` → PR into `dev` → maintainer merges `dev` → `main` → tag `v*` on
+`main` to release. PRs opened against `main` will be retargeted to `dev`.
+
 ## Pull requests
 
+- Target the **`dev`** branch (see the branch model above).
 - Keep PRs focused: one logical change per PR.
 - Use [Conventional Commits](https://www.conventionalcommits.org) for commit subjects
   (`feat:`, `fix:`, `docs:`, `ci:`, …) — the history follows this.

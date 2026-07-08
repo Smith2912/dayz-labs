@@ -112,6 +112,12 @@ dotnet run --project src/Dzl.Cli -- build MyMod --sign
 Run `dotnet run --project src/Dzl.Cli -- --help` for the full command list. The release installer is
 built by `scripts/pack.ps1` (Velopack) and published on a `v*` tag by `.github/workflows/release.yml`.
 
+## Contributing
+
+Bug reports, fixes, and docs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Pull requests target the **`dev`** branch (the default); `main` is release-only and gets
+tagged `v*` to ship.
+
 ## License
 
 `dzl` is licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE).

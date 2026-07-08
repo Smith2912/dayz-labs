@@ -1,3 +1,5 @@
+<!-- PRs target the `dev` branch (the default). `main` is release-only — see CONTRIBUTING.md. -->
+
 ## Summary
 
 <!-- What does this PR change, and why? -->
