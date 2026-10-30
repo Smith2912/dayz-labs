@@ -33,6 +33,14 @@ agent like Claude can drive it), and a WPF system-tray app.
 - **Website design:** task-oriented guides, responsive layouts, an updated app image,
   and explicit fork/upstream release guidance.
 
+The follow-up blindspot fixes also reject duplicate Type names, retain usable revisions
+after partial saves, guard restore against dirty drafts, and bind dictionary sessions.
+Tray monitor launches preserve the selected config, canonical aliases share ownership
+storage, and successful de-elevated starts are not retried as elevated processes.
+Build staging is unique per invocation; completed archives undergo structure, prefix,
+payload-length and container-checksum verification. Extraction receipts include output
+digests, and **Verify / repair** forces re-extraction of unchanged source PBOs.
+
 ## Builds and release status
 
 Check this fork's [releases](https://github.com/Smith2912/dayz-labs/releases) for independently published builds. The original project's releases remain available from [Borcioo/dayz-labs](https://github.com/Borcioo/dayz-labs/releases).
@@ -75,8 +83,9 @@ instances, and keys live), and scaffolds a server instance.
   the Tools GUI.
 - **Build pipeline** — build a mod project into a PBO with a preflight gate (config sanity,
   missing/excluded asset references, baked absolute paths, path-hygiene rules, Enforce-script traps),
-  optional binarization and signing, a content-hash build cache that skips unchanged mods, and
-  post-build verification.
+  optional binarization and signing, a content-hash cache for non-binarized builds, and
+  archive structure/checksum verification. Binarized builds always rebuild until external
+  P: assets and includes can be tracked reliably. Container checks do not verify BI signatures.
 - **Signing keys** — create your creator key pair once; one key signs all your mods.
 - **Central Economy editors** — edit a mission's `types.xml` and the rest of the CE config (events,
   globals, spawnable types, random presets, player spawns) with linting and versioned backups.
@@ -174,9 +183,12 @@ release configuration before a `v*` tag can publish a package.
 
 ## Validation
 
-Local validation recorded October 27–29, 2026 passed **735 core tests** and **212 tray tests**,
+The original remediation checks recorded October 27–29, 2026 passed **735 core tests** and **212 tray tests**,
 plus isolated desktop startup and editor workflow checks. The website build and internal
 link checks passed; its layouts were reviewed at mobile, tablet, and desktop widths.
+
+Follow-up blindspot validation and its host-specific limits are recorded in
+[the fix report](docs/validation/blindspot-fixes-2026-10-29.md).
 
 These are source-build and disposable-fixture results. Native DayZ server/client behavior,
 BankRev extraction, Binarize/CfgConvert output, cryptographic signature acceptance, and

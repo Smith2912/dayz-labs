@@ -40,7 +40,7 @@ public static class BuildCache
     public static string SettingsFingerprint(string modDir, bool binarize, bool sign,
         string? binarizer, string? converter, string? signer, string? key,
         Dictionary<string, string>? memo = null) =>
-        $"v=2;binarize={binarize};sign={sign};prefix={PathResolver.ReadPrefix(modDir)};" +
+        $"v=3;binarize={binarize};sign={sign};prefix={PathResolver.ReadPrefix(modDir)};" +
         $"exe={Fingerprint(binarizer, memo)};cfgconvert={Fingerprint(converter, memo)};" +
         $"signer={(sign ? Fingerprint(signer, memo) : "off")};key={(sign ? Fingerprint(key, memo) : "off")}";
 

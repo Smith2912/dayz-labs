@@ -21,13 +21,17 @@ public static class IpcContract
         return "dzl-ipc-v2-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key))).ToLowerInvariant();
     }
 
-    /// <summary>Resolve Windows junctions for existing config files or their nearest existing parent.</summary>
+    /// <summary>Resolve file links and parent junctions without opening the replaceable config file.
+    /// Even a delete-shared file handle can briefly hold a Windows replacement target delete-pending.</summary>
     public static string CanonicalConfigPath(string configPath)
     {
         var path = Path.GetFullPath(configPath);
         if (!OperatingSystem.IsWindows()) return path;
-        var existing = path;
-        while (!File.Exists(existing) && !Directory.Exists(existing))
+        if (new FileInfo(path).LinkTarget is not null)
+            path = File.ResolveLinkTarget(path, returnFinalTarget: true)?.FullName
+                ?? throw new IOException($"Cannot resolve config link '{path}'.");
+        var existing = Path.GetDirectoryName(path)!;
+        while (!Directory.Exists(existing))
             existing = Path.GetDirectoryName(existing) ?? throw new IOException($"Cannot resolve config path '{path}'.");
         using var handle = CreateFileW(existing, 0, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
         if (handle.IsInvalid) throw new IOException($"Cannot resolve config path '{existing}'.", Marshal.GetExceptionForHR(Marshal.GetHRForLastWin32Error()));
@@ -42,7 +46,7 @@ public static class IpcContract
         var resolved = buffer.ToString();
         if (resolved.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase)) resolved = @"\\" + resolved[8..];
         else if (resolved.StartsWith(@"\\?\", StringComparison.Ordinal)) resolved = resolved[4..];
-        return existing == path ? resolved : Path.GetFullPath(Path.Combine(resolved, Path.GetRelativePath(existing, path)));
+        return Path.GetFullPath(Path.Combine(resolved, Path.GetRelativePath(existing, path)));
     }
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

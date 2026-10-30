@@ -133,7 +133,12 @@ public sealed class TypesService
     public OpResult SaveAll(IReadOnlyList<TypeEntry> entries) => SaveAll(entries, LoadSnapshot());
 
     public OpResult SaveAll(IReadOnlyList<TypeEntry> entries, TypesSnapshot snapshot)
+        => SaveAll(entries, snapshot, out _);
+
+    /// <summary>Returns revisions of files actually committed, including after a partial failure, so a draft can retry.</summary>
+    public OpResult SaveAll(IReadOnlyList<TypeEntry> entries, TypesSnapshot snapshot, out TypesSnapshot updatedSnapshot)
     {
+        updatedSnapshot = snapshot;
         using var configGuard = Dzl.Core.Launch.StateFile.AcquireLock(_configPath);
         var (resolved, primary) = ResolveAll();
         if (primary is null) return new(false, "no types.xml files resolved");
@@ -165,6 +170,9 @@ public sealed class TypesService
         var saved = new List<string>();
         var failed = new List<string>();
         var byFile = groups.ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+        if (byFile.Values.Any(rows => rows.GroupBy(e => e.Name, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1)))
+            return new(false, "duplicate type names in a file; resolve name collisions before saving");
+        var revisions = new Dictionary<string, string>(snapshot.Revisions, StringComparer.OrdinalIgnoreCase);
         foreach (var file in valid)
         {
             var g = byFile.TryGetValue(file, out var rows) ? rows : new List<TypeEntry>();
@@ -177,13 +185,17 @@ public sealed class TypesService
                 foreach (var t in doc.Root!.Elements("type").ToList())
                     if (!keep.Contains(t.Attribute("name")?.Value ?? "")) t.Remove();
                 foreach (var e in g) TypesXml.Upsert(doc, e);
+                var xml = TypesXml.ToXml(doc);
+                var committedRevision = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(xml)));
                 CeBackup.Snapshot(file);
-                CeBackup.WriteTextAtomically(file, TypesXml.ToXml(doc));
+                CeBackup.WriteTextAtomically(file, xml);
+                revisions[file] = committedRevision;
                 saved.Add(Path.GetFileName(file));
             }
             catch { failed.Add(Path.GetFileName(file)); }
         }
 
+        updatedSnapshot = snapshot with { Revisions = revisions };
         if (failed.Count == 0)
             return new(true, $"saved {entries.Count} types across {saved.Count} file(s)");
         if (saved.Count > 0)
@@ -313,10 +325,16 @@ public sealed class TypesService
 
     /// <summary>Restores the <b>primary</b> types file from a specific backup snapshot
     /// (see <see cref="Backups"/> for the primary-only scope).</summary>
-    public OpResult Restore(string backupFile)
+    public OpResult Restore(string backupFile, string? expectedFile = null)
     {
+        using var configGuard = Dzl.Core.Launch.StateFile.AcquireLock(_configPath);
         var f = ResolveAll().Primary;
         if (f is null) return new(false, "no types.xml for the active server's mission");
+        if (expectedFile is not null && !string.Equals(f, expectedFile, StringComparison.OrdinalIgnoreCase))
+            return new(false, "active mission changed; reload before restoring");
+        if (Path.IsPathRooted(backupFile) && !string.Equals(Path.GetDirectoryName(Path.GetFullPath(backupFile)),
+                Path.GetFullPath(TypesBackup.BackupDir(f)), StringComparison.OrdinalIgnoreCase))
+            return new(false, "backup belongs to a different mission or file");
         return TypesBackup.Restore(f, backupFile)
             ? new(true, $"restored {Path.GetFileName(backupFile)}")
             : new(false, "restore failed");

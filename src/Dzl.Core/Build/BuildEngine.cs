@@ -26,11 +26,8 @@ public static class BuildEngine
         var binExe = ToolCatalog.Find(toolsDir, "binarize");
         if (binarize && (binExe is null || !binExe.Exists)) return Fail("binarize.exe not found — check the DayZ Tools path");
 
-        try
-        {
-            if (Directory.Exists(workDir)) Directory.Delete(workDir, recursive: true);
-        }
-        catch { /* leftover work dir — best effort */ }
+        // Never overlay a previous invocation's staging tree, even if cleanup was blocked.
+        workDir = Path.Combine(workDir, Guid.NewGuid().ToString("N"));
 
         var final = Path.Combine(workDir, pboName);
         Directory.CreateDirectory(final);
@@ -88,6 +85,8 @@ public static class BuildEngine
         onLine?.Invoke($"pack: {pboName}.pbo");
         var (pok, pout) = PboWriter.Pack(final, pbo, prefix, onLine);
         if (!pok || !File.Exists(pbo)) return Fail($"packing {pboName}.pbo failed", pout);
+        var validation = PboValidator.Validate(pbo, prefix);
+        if (!validation.ok) return Fail($"archive verification failed: {validation.error}");
 
         // 6. Sign.
         if (!string.IsNullOrWhiteSpace(signPrivateKey))

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Dzl.Core.Procs;
+using Dzl.Core.Build;
 
 namespace Dzl.Core.Tools;
 
@@ -16,7 +17,7 @@ public sealed record UnpackResult(bool Ok, int Total, int Extracted, int Skipped
 /// folders but silently skips files (e.g. <c>dz\worlds\enoch\data\enoch_riversea.emat</c>), which then read as
 /// "missing" to preflight/binarize even though they exist in the game's PBOs. Unpacking each PBO individually with
 /// BankRev avoids that. Incremental by default (a manifest skips PBOs already extracted at their current
-/// timestamp+size); <c>force</c> re-extracts everything. Never throws.
+/// timestamp+size AND verified destination digests); <c>force</c> re-extracts everything.
 /// </summary>
 public static class GameUnpack
 {
@@ -63,6 +64,14 @@ public static class GameUnpack
     /// Reports each PBO via <paramref name="onItem"/>; honours <paramref name="cancelled"/> between PBOs.</summary>
     public static UnpackResult UnpackAll(string bankRevExe, string gameDir, string destRoot, bool force,
         Action<UnpackItem>? onItem = null, Func<bool>? cancelled = null)
+        => UnpackAllCore(bankRevExe, gameDir, destRoot, force,
+            (pbo, dest) => ProcRunner.Run(bankRevExe, BankRevArgs(pbo, dest),
+                new RunOpts(WorkingDir: Path.GetDirectoryName(bankRevExe), TimeoutMs: 10 * 60 * 1000)).Ok,
+            onItem, cancelled);
+
+    // Injection covers orchestration/integrity with disposable archives, without invoking native tools.
+    internal static UnpackResult UnpackAllCore(string bankRevExe, string gameDir, string destRoot, bool force,
+        Func<string, string, bool> extract, Action<UnpackItem>? onItem = null, Func<bool>? cancelled = null)
     {
         if (string.IsNullOrWhiteSpace(bankRevExe) || !File.Exists(bankRevExe))
             return new UnpackResult(false, 0, 0, 0, 0, "BankRev.exe not found — set the DayZ Tools path");
@@ -74,7 +83,7 @@ public static class GameUnpack
             return new UnpackResult(false, 0, 0, 0, 0, $"no PBOs found under {gameDir}");
 
         var manifestPath = Path.Combine(destRoot, ManifestName);
-        var manifest = force ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) : LoadManifest(manifestPath);
+        var manifest = LoadManifest(manifestPath);
 
         int extracted = 0, skipped = 0, failed = 0;
         for (var i = 0; i < pbos.Count; i++)
@@ -86,26 +95,36 @@ public static class GameUnpack
             var pbo = pbos[i];
             var idx = i + 1;
             var stamp = Stamp(new FileInfo(pbo));
-            if (!force && manifest.TryGetValue(pbo, out var prev) && prev == stamp)
+            if (!force && manifest.TryGetValue(pbo, out var prev) && prev.Stamp == stamp && VerifyOutputs(destRoot, prev))
             {
                 skipped++;
                 onItem?.Invoke(new UnpackItem(idx, pbos.Count, pbo, "up to date"));
                 continue;
             }
 
-            var r = ProcRunner.Run(bankRevExe, BankRevArgs(pbo, destRoot),
-                new RunOpts(WorkingDir: Path.GetDirectoryName(bankRevExe), TimeoutMs: 10 * 60 * 1000));
-            if (r.Ok)
+            bool ran;
+            OutputReceipt? receipt = null;
+            try
+            {
+                // Validate destinations before handing the archive to an external extractor.
+                _ = OutputPaths(pbo, destRoot);
+                ran = extract(pbo, destRoot);
+                if (ran) receipt = CaptureOutputs(pbo, destRoot, stamp);
+            }
+            catch { ran = false; }
+            if (ran && receipt is not null)
             {
                 extracted++;
-                manifest[pbo] = stamp;
+                manifest[pbo] = receipt;
                 onItem?.Invoke(new UnpackItem(idx, pbos.Count, pbo, "extracted"));
                 SaveManifest(manifestPath, manifest);   // persist incrementally so a crash/cancel keeps progress
             }
             else
             {
                 failed++;
-                onItem?.Invoke(new UnpackItem(idx, pbos.Count, pbo, $"FAILED: {Trim(r.AllOutput)}"));
+                manifest.Remove(pbo);
+                SaveManifest(manifestPath, manifest);
+                onItem?.Invoke(new UnpackItem(idx, pbos.Count, pbo, "FAILED: extraction or destination integrity check failed"));
             }
         }
 
@@ -114,23 +133,66 @@ public static class GameUnpack
             $"{(ok ? "done" : "completed with errors")}: {extracted} extracted, {skipped} up-to-date, {failed} failed");
     }
 
-    private static string Trim(string s) => s.Length <= 200 ? s.Trim() : s.Substring(0, 200).Trim() + "…";
+    private sealed record OutputReceipt(string Stamp, Dictionary<string, string> Digests);
 
-    private static Dictionary<string, string> LoadManifest(string path)
+    private static List<(string Path, long Size)> OutputPaths(string pbo, string destRoot)
+    {
+        var header = PboHeader.Read(pbo) ?? throw new InvalidDataException("Unreadable PBO header");
+        if (header.Entries.Count == 0) throw new InvalidDataException("Empty PBO output manifest");
+        var root = Path.GetFullPath(destRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return header.Entries.Select(entry =>
+        {
+            var relative = Path.Combine(header.Prefix.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar),
+                entry.Name.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar));
+            var output = Path.GetFullPath(Path.Combine(root, relative));
+            if (!output.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("PBO output outside destination");
+            return (output, (long)(entry.PackingMethod == 0 ? entry.DataSize : entry.OriginalSize));
+        }).ToList();
+    }
+
+    private static OutputReceipt CaptureOutputs(string pbo, string destRoot, string stamp)
+    {
+        var digests = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (path, size) in OutputPaths(pbo, destRoot))
+        {
+            if (!File.Exists(path) || new FileInfo(path).Length != size)
+                throw new InvalidDataException($"Extracted file missing or wrong length: {path}");
+            digests[Path.GetRelativePath(destRoot, path)] = BuildCache.OutputDigest(path);
+        }
+        return new OutputReceipt(stamp, digests);
+    }
+
+    private static bool VerifyOutputs(string destRoot, OutputReceipt receipt)
+    {
+        try
+        {
+            if (receipt.Digests is null || receipt.Digests.Count == 0) return false;
+            var root = Path.GetFullPath(destRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            return receipt.Digests.All(item =>
+            {
+                var path = Path.GetFullPath(Path.Combine(root, item.Key));
+                return path.StartsWith(root, StringComparison.OrdinalIgnoreCase) && File.Exists(path) &&
+                    BuildCache.OutputDigest(path) == item.Value;
+            });
+        }
+        catch { return false; }
+    }
+
+    private static Dictionary<string, OutputReceipt> LoadManifest(string path)
     {
         try
         {
             if (File.Exists(path))
             {
-                var d = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path));
-                if (d is not null) return new Dictionary<string, string>(d, StringComparer.OrdinalIgnoreCase);
+                var d = JsonSerializer.Deserialize<Dictionary<string, OutputReceipt>>(File.ReadAllText(path));
+                if (d is not null) return new Dictionary<string, OutputReceipt>(d, StringComparer.OrdinalIgnoreCase);
             }
         }
         catch { /* corrupt/unreadable manifest — treat as empty (everything re-extracts) */ }
-        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        return new Dictionary<string, OutputReceipt>(StringComparer.OrdinalIgnoreCase);
     }
 
-    private static void SaveManifest(string path, Dictionary<string, string> manifest)
+    private static void SaveManifest(string path, Dictionary<string, OutputReceipt> manifest)
     {
         try { File.WriteAllText(path, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true })); }
         catch { /* best-effort — next run just re-extracts */ }

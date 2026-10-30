@@ -93,4 +93,89 @@ public class MissionOwnershipRegressionTests
         result.msg.Should().Contain("changed outside");
         File.ReadAllText(path).Should().Be(B);
     }
+
+    [WpfFact]
+    public void Restore_does_not_discard_a_dirty_draft_or_undo_history()
+    {
+        var config = CeScaffold.Mission(("db/types.xml", "<types><type name=\"Apple\"/></types>"));
+        var service = new TypesService(config);
+        var path = service.TypesFile()!;
+        var backup = Dzl.Core.Economy.TypesBackup.Snapshot(path);
+        using var vm = new TypesEditorVm(config);
+        vm.LoadTypes();
+        vm.AddType("Unsaved");
+        var original = File.ReadAllText(path);
+        vm.RestoreTypes(backup);
+        vm.HasUnsavedChanges.Should().BeTrue();
+        vm.CanUndoTypes.Should().BeTrue();
+        vm.Types.Should().Contain(row => row.Name == "Unsaved");
+        File.ReadAllText(path).Should().Be(original);
+        vm.TypesStatus.Should().Contain("Save or explicitly discard");
+        vm.LoadTypes(); // explicit discard
+        vm.RestoreTypes(backup);
+        vm.HasUnsavedChanges.Should().BeFalse();
+        vm.Types.Should().NotContain(row => row.Name == "Unsaved");
+    }
+
+    [Fact]
+    public void Dictionary_manager_keeps_stale_combo_edits_out_of_new_mission()
+    {
+        const string limits = "<user_lists><usageflags><user name=\"Combo\"><usage name=\"Farm\"/></user></usageflags></user_lists>";
+        var config = CeScaffold.Mission(("cfglimitsdefinitionuser.xml", limits));
+        var other = Profiles.InstanceDir("other", config);
+        var mission = Path.Combine(other, "mpmissions", "dayzOffline.chernarusplus");
+        Directory.CreateDirectory(mission);
+        var file = Path.Combine(mission, "cfglimitsdefinitionuser.xml");
+        File.WriteAllText(file, limits);
+        Profiles.Save(DzlConfig.Default() with { ConfigName = Path.Combine(other, "serverDZ.cfg") }, "other", config);
+        var vm = new DictionaryManagerVm(config, () => { }, (_, _) => 0, _ => true);
+        vm.Reload();
+        vm.SelectedCombo!.Members.Add("Town");
+        Profiles.SetActive("other", config);
+        vm.SaveSelectedComboMembers();
+        vm.Status.Should().Contain("mission or file changed");
+        File.ReadAllText(file).Should().Be(limits);
+        vm.Reload();
+        vm.SelectedCombo!.Members.Add("Town");
+        vm.SaveSelectedComboMembers();
+        File.ReadAllText(file).Should().Contain("Town");
+    }
+
+    [WpfFact]
+    public void Duplicate_type_rename_retains_the_dirty_draft_and_history()
+    {
+        var config = CeScaffold.Mission(("db/types.xml", "<types><type name=\"A\"/><type name=\"B\"/></types>"));
+        using var vm = new TypesEditorVm(config);
+        vm.LoadTypes();
+        vm.PushDetailEditUndo();
+        vm.Types.First().Name = "B";
+        vm.SaveTypes();
+        vm.HasUnsavedChanges.Should().BeTrue();
+        vm.CanUndoTypes.Should().BeTrue();
+        vm.Types.Count.Should().Be(2);
+        vm.TypesStatus.Should().Contain("duplicate type names");
+        new TypesService(config).List().Select(e => e.Name).Should().Equal("A", "B");
+    }
+
+    [WpfFact]
+    public void Partial_save_retry_keeps_and_completes_the_vm_draft()
+    {
+        var config = CeScaffold.Mission(
+            ("db/types.xml", "<types><type name=\"A\"><nominal>1</nominal></type></types>"),
+            ("custom/other.xml", "<types><type name=\"B\"><nominal>2</nominal></type></types>"),
+            ("cfgeconomycore.xml", "<economycore><ce folder=\"custom\"><file name=\"other.xml\" type=\"types\"/></ce></economycore>"));
+        using var vm = new TypesEditorVm(config);
+        vm.LoadTypes();
+        vm.BatchApply(vm.Types.ToList(), "nominal", 25, false);
+        var other = vm.Types.Single(row => row.Name == "B").SourceFile;
+        var blocker = Path.Combine(Path.GetDirectoryName(other)!, ".dzl-other-backups");
+        File.WriteAllText(blocker, "blocked");
+        vm.SaveTypes();
+        vm.HasUnsavedChanges.Should().BeTrue();
+        vm.TypesStatus.Should().Contain("partial save");
+        File.Delete(blocker);
+        vm.SaveTypes();
+        vm.HasUnsavedChanges.Should().BeFalse();
+        new TypesService(config).List().Should().OnlyContain(row => row.Nominal == 25);
+    }
 }

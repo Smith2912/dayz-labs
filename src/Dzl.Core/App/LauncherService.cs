@@ -140,10 +140,10 @@ public sealed class LauncherService
 
     /// <summary>CLI/MCP starts pull the tray up as a monitor when configured; the tray's own
     /// starts ("tui") never re-launch it.</summary>
-    private static void AutoLaunchTrayIfWanted(DzlConfig cfg, string source)
+    private void AutoLaunchTrayIfWanted(DzlConfig cfg, string source)
     {
-        if (source is "cli" or "mcp" && cfg.AutoLaunchTray && !TrayLauncher.IsTrayRunning())
-            TrayLauncher.LaunchMonitor(AppContext.BaseDirectory);
+        if (source is "cli" or "mcp" && cfg.AutoLaunchTray && !TrayLauncher.IsTrayRunning(_configPath))
+            TrayLauncher.LaunchMonitor(AppContext.BaseDirectory, _configPath);
     }
 
     /// <summary>The facade never throws: a spawn failure (bad DayzPath, missing exe) must come

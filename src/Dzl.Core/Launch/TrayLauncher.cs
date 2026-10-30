@@ -18,11 +18,11 @@ public static class TrayLauncher
     }
 
     /// <summary>True if the single-instance tray mutex exists (tray already running). Windows-only.</summary>
-    public static bool IsTrayRunning()
+    public static bool IsTrayRunning(string configPath)
     {
         try
         {
-            if (!Mutex.TryOpenExisting("dzl-tray-singleton", out var m)) return false;
+            if (!Mutex.TryOpenExisting(Dzl.Core.Ipc.IpcContract.PipeNameFor(configPath) + "-tray", out var m)) return false;
             m?.Dispose();
             return true;
         }
@@ -35,13 +35,16 @@ public static class TrayLauncher
     /// de-elevated code paths call WaitForExit/WaitForSingleObject with 0 ms, which returns immediately
     /// without waiting for the child to exit. The tray process keeps running detached — this call does
     /// NOT block the CLI/MCP caller.</remarks>
-    public static void LaunchMonitor(string baseDir)
+    public static List<string> MonitorArgs(string configPath) =>
+        new() { "--tray", "--config", Dzl.Core.Ipc.IpcContract.CanonicalConfigPath(configPath) };
+
+    public static void LaunchMonitor(string baseDir, string configPath)
     {
         var exe = Resolve(baseDir);
         if (exe is null) return;
         try
         {
-            ProcessElevation.Run(exe, new List<string> { "--tray" },
+            ProcessElevation.Run(exe, MonitorArgs(configPath),
                 Path.GetDirectoryName(exe) ?? "", timeoutMs: 0, deElevateIfAdmin: true, showWindow: false);
         }
         catch { /* best-effort monitor */ }

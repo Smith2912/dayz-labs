@@ -12,11 +12,11 @@ public static class StateFile
     private static readonly JsonSerializerOptions Json = DzlJson.SnakeIndented;
 
     public static string Path(string configPath) =>
-        System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(configPath))!,
+        System.IO.Path.Combine(System.IO.Path.GetDirectoryName(IpcContract.CanonicalConfigPath(configPath))!,
             ".dzl-procs." + IpcContract.PipeNameFor(configPath)["dzl-ipc-v2-".Length..] + ".json");
 
     private static string LegacyPath(string configPath) =>
-        System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(configPath))!, ".dzl-procs.json");
+        System.IO.Path.Combine(System.IO.Path.GetDirectoryName(IpcContract.CanonicalConfigPath(configPath))!, ".dzl-procs.json");
 
     public static IDisposable AcquireLock(string configPath)
     {

@@ -621,7 +621,8 @@ public sealed partial class TypesEditorVm : ObservableObject, IDisposable
             return;
         }
         if (_typesSnapshot is null) { TypesStatus = "✗ Load types before saving."; return; }
-        var r = svc.SaveAll(Types.Select(t => t.ToEntry()).ToList(), _typesSnapshot);
+        var r = svc.SaveAll(Types.Select(t => t.ToEntry()).ToList(), _typesSnapshot, out var updatedSnapshot);
+        _typesSnapshot = updatedSnapshot;
         TypesStatus = (r.Ok ? "✓ " : "✗ ") + r.Message;
         if (r.Ok) LoadTypes();
     }
@@ -855,7 +856,17 @@ public sealed partial class TypesEditorVm : ObservableObject, IDisposable
 
     public void RestoreTypes(string file)
     {
-        var r = new TypesService(_configPath).Restore(file);
+        if (HasUnsavedChanges)
+        {
+            TypesStatus = "✗ Save or explicitly discard the pending Types edits before restoring a backup.";
+            return;
+        }
+        if (!string.Equals(_loadedTypesFile, new TypesService(_configPath).TypesFile(), StringComparison.OrdinalIgnoreCase))
+        {
+            TypesStatus = "✗ The active mission changed; reload before restoring a backup.";
+            return;
+        }
+        var r = new TypesService(_configPath).Restore(file, _loadedTypesFile);
         TypesStatus = (r.Ok ? "✓ " : "✗ ") + r.Message;
         if (r.Ok) LoadTypes();
     }

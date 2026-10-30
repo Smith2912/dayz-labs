@@ -33,6 +33,10 @@ public partial class App : Application
     /// </summary>
     public static string ConfigPath()
     {
+        var args = Environment.GetCommandLineArgs();
+        for (var i = 1; i + 1 < args.Length; i++)
+            if (args[i].Equals("--config", StringComparison.OrdinalIgnoreCase))
+                return IpcContract.CanonicalConfigPath(args[i + 1]);
         var env = Environment.GetEnvironmentVariable("DZL_CONFIG");
         if (!string.IsNullOrWhiteSpace(env)) return env;
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);

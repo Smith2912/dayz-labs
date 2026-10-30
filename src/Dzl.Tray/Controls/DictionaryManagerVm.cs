@@ -87,6 +87,7 @@ public sealed partial class DictionaryManagerVm : ObservableObject
     /// <summary>(Re)load every list + the combos from disk. Called on tab activation.</summary>
     public void Reload()
     {
+        _svc.BindEditorSession();
         Limits = _svc.Load();
         Categories.Fill(Sorted(Limits.Category));
         Tags.Fill(Sorted(Limits.Tag));

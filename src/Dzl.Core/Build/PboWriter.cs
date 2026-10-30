@@ -52,6 +52,7 @@ public static class PboWriter
     public static (bool ok, string output) Pack(string sourceDir, string outputPath, string prefix,
         Action<string>? onLine = null)
     {
+        string? tmp = null;
         try
         {
             sourceDir = Path.GetFullPath(sourceDir);
@@ -63,7 +64,9 @@ public static class PboWriter
             foreach (var file in EnumeratePackableFiles(sourceDir))
             {
                 var rel = Path.GetRelativePath(sourceDir, file).Replace('/', '\\');
-                entries.Add(new Entry(rel, file, null, new FileInfo(file).Length));
+                var size = new FileInfo(file).Length;
+                if (size > uint.MaxValue) return (false, $"PBO input exceeds 4 GiB: {rel}");
+                entries.Add(new Entry(rel, file, null, size));
             }
 
             var normalizedPrefix = prefix.Replace('/', '\\').Trim('\\');
@@ -78,7 +81,8 @@ public static class PboWriter
 
             var header = BuildHeader(entries, normalizedPrefix);
 
-            var tmp = outputPath + ".tmp";
+            tmp = outputPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            onLine?.Invoke($"packing {entries.Count} file(s)");
             using (var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA1))
             using (var outFile = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
             {
@@ -93,17 +97,24 @@ public static class PboWriter
                         sha.AppendData(e.Data);
                         continue;
                     }
-                    using var inFile = File.OpenRead(e.Path!);
+                    using var inFile = new FileStream(e.Path!, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    if (inFile.Length != e.Size) throw new IOException($"packing input changed: {e.Name}");
+                    long copied = 0;
                     int read;
                     while ((read = inFile.Read(buffer, 0, buffer.Length)) > 0)
                     {
                         outFile.Write(buffer, 0, read);
                         sha.AppendData(buffer, 0, read);
+                        copied += read;
                     }
+                    if (copied != e.Size || inFile.Length != e.Size)
+                        throw new IOException($"packing input changed: {e.Name}");
                 }
                 outFile.WriteByte(0);
                 outFile.Write(sha.GetHashAndReset());
             }
+            var validation = PboValidator.Validate(tmp, normalizedPrefix);
+            if (!validation.ok) return (false, $"archive verification failed: {validation.error}");
             File.Move(tmp, outputPath, overwrite: true);
             onLine?.Invoke($"packed {entries.Count} file(s) -> {Path.GetFileName(outputPath)}");
             return (true, $"packed {entries.Count} file(s)");
@@ -112,6 +123,7 @@ public static class PboWriter
         {
             return (false, ex.Message);
         }
+        finally { try { if (tmp is not null && File.Exists(tmp)) File.Delete(tmp); } catch { /* no published output changed */ } }
     }
 
     private static IEnumerable<string> EnumeratePackableFiles(string sourceDir)

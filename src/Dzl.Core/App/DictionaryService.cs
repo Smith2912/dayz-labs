@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using System.Security.Cryptography;
 using Dzl.Core.Config;
 using Dzl.Core.Economy;
 
@@ -12,6 +13,21 @@ namespace Dzl.Core.App;
 public sealed class DictionaryService
 {
     private readonly string _configPath;
+    private Dictionary<string, string>? _session;
+
+    public void BindEditorSession()
+    {
+        using var configGuard = Dzl.Core.Launch.StateFile.AcquireLock(_configPath);
+        _session = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in new[] { LimitsPath(), LimitsUserPath() })
+            if (path is not null) _session[path] = Revision(path);
+    }
+
+    private static string Revision(string path) => File.Exists(path)
+        ? Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))) : "missing";
+    private bool MatchesSession(string path) => _session is null ||
+        (_session.TryGetValue(path, out var revision) && revision == Revision(path));
+    private void RecordRevision(string path) { if (_session is not null) _session[path] = Revision(path); }
 
     public DictionaryService(string configPath) { _configPath = configPath; }
 
@@ -51,6 +67,7 @@ public sealed class DictionaryService
         try
         {
             using var guard = CeBackup.LockFiles(new[] { path });
+            if (!MatchesSession(path)) return (false, "dictionary mission or file changed; reload before editing");
             XDocument doc;
             if (File.Exists(path))
             {
@@ -70,6 +87,7 @@ public sealed class DictionaryService
             if (!edit(doc)) return (false, noOpMsg);
             CeBackup.Snapshot(path);
             CeBackup.WriteTextAtomically(path, LimitsXml.ToXml(doc));
+            RecordRevision(path);
             return (true, successMsg);
         }
         catch (Exception ex) { return (false, ex.Message); }
@@ -144,6 +162,7 @@ public sealed class DictionaryService
         try
         {
             using var guard = CeBackup.LockFiles(new[] { path });
+            if (!MatchesSession(path)) return (false, "dictionary mission or file changed; reload before editing");
             var doc = File.Exists(path)
                 ? LimitsUserXml.ParseDoc(File.ReadAllText(path))
                 : new XDocument(
@@ -155,6 +174,7 @@ public sealed class DictionaryService
             if (!edit(doc)) return (false, noOpMsg);
             CeBackup.Snapshot(path);
             CeBackup.WriteTextAtomically(path, LimitsUserXml.ToXml(doc));
+            RecordRevision(path);
             return (true, successMsg);
         }
         catch (Exception ex) { return (false, ex.Message); }

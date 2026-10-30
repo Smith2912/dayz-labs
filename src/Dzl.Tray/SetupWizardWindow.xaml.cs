@@ -502,11 +502,10 @@ public partial class SetupWizardWindow : FluentWindow
     // Extract button: a real extract you watch (WorkDrive's progress console is shown).
     private void OnExtractGameData(object sender, RoutedEventArgs e) => _ = RunExtract(showProgress: true);
 
-    // Re-check IS the same BankRev unpack — it's idempotent (a manifest skips PBOs already extracted at
-    // their current timestamp), so re-running it is the authoritative verify. Quiet: only the summary.
-    private void OnReCheckGameData(object sender, RoutedEventArgs e) => _ = RunExtract(showProgress: false);
+    // Explicit repair re-extracts even unchanged source PBOs, then records verified destination files.
+    private void OnReCheckGameData(object sender, RoutedEventArgs e) => _ = RunExtract(showProgress: false, force: true);
 
-    private async Task RunExtract(bool showProgress)
+    private async Task RunExtract(bool showProgress, bool force = false)
     {
         if (_extractCancellation is not null) return;
         var tools = ToolsPathBox.Text?.Trim() ?? "";
@@ -547,12 +546,12 @@ public partial class SetupWizardWindow : FluentWindow
         GameDataNote.Text = showProgress
             ? "Extracting vanilla PBOs to P: with BankRev. First run unpacks everything (a few minutes); "
               + "re-runs skip what's already current."
-            : "Verifying… re-checking each PBO (instant when already extracted).";
+            : "Repairing… re-extracting each PBO and checking destination files. This can take several minutes.";
         try
         {
             // dzl unpacks every game PBO itself via BankRev (reliable + incremental) instead of WorkDrive.exe
-            // /ExtractGameData, whose built-in extract is unreliable. Idempotent: a manifest skips current PBOs.
-            var r = await Task.Run(() => GameUnpack.UnpackAll(bankrev.ExePath, game, destination, force: false,
+            // /ExtractGameData, whose built-in extract is unreliable. Reuse requires destination digests too.
+            var r = await Task.Run(() => GameUnpack.UnpackAll(bankrev.ExePath, game, destination, force: force,
                 onItem: it => { if (showProgress) Dispatcher.BeginInvoke(() =>
                     GameDataNote.Text = $"[{it.Index}/{it.Total}] {Path.GetFileName(it.Pbo)} — {it.Status}"); },
                 cancelled: () => cancellation.IsCancellationRequested));

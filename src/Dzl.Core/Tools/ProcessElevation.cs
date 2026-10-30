@@ -17,10 +17,17 @@ public static class ProcessElevation
     {
         if (deElevateIfAdmin && OperatingSystem.IsWindows() && Dzl.Core.Env.EnvDetect.IsElevated())
         {
-            var code = TryRunDeElevated(exePath, args, workingDir, timeoutMs, showWindow);
-            if (code is not null) return code;   // success; else fall through to normal launch
+            var attempt = TryRunDeElevated(exePath, args, workingDir, timeoutMs, showWindow);
+            return CompleteLaunch(() => attempt,
+                () => RunNormal(exePath, args, workingDir, timeoutMs, showWindow));
         }
         return RunNormal(exePath, args, workingDir, timeoutMs, showWindow);
+    }
+
+    internal static int? CompleteLaunch(Func<(bool Started, int? ExitCode)> preferred, Func<int?> fallback)
+    {
+        var result = preferred();
+        return result.Started ? result.ExitCode : fallback();
     }
 
     private static int? RunNormal(string exePath, IReadOnlyList<string> args, string workingDir, int timeoutMs, bool showWindow)
@@ -39,44 +46,46 @@ public static class ProcessElevation
 
     // Spawn the child via the elevated process's linked (limited) user token.
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    private static int? TryRunDeElevated(string exePath, IReadOnlyList<string> args, string workingDir, int timeoutMs, bool showWindow)
+    private static (bool Started, int? ExitCode) TryRunDeElevated(string exePath, IReadOnlyList<string> args, string workingDir, int timeoutMs, bool showWindow)
     {
+        bool started = false;
         IntPtr hProc = GetCurrentProcess();
         IntPtr hToken = IntPtr.Zero, hLinked = IntPtr.Zero, hPrimary = IntPtr.Zero;
         try
         {
-            if (!OpenProcessToken(hProc, TOKEN_QUERY | TOKEN_DUPLICATE, out hToken)) return null;
+            if (!OpenProcessToken(hProc, TOKEN_QUERY | TOKEN_DUPLICATE, out hToken)) return (false, null);
 
             // Get the linked (lower-integrity, normal-user) token.
             GetTokenInformation(hToken, TOKEN_INFORMATION_CLASS.TokenLinkedToken, IntPtr.Zero, 0, out int len);
-            if (len <= 0) return null;
+            if (len <= 0) return (false, null);
             IntPtr buf = Marshal.AllocHGlobal(len);
             try
             {
                 if (!GetTokenInformation(hToken, TOKEN_INFORMATION_CLASS.TokenLinkedToken, buf, len, out len))
-                    return null;
+                    return (false, null);
                 hLinked = Marshal.ReadIntPtr(buf);  // TOKEN_LINKED_TOKEN.LinkedToken
             }
             finally { Marshal.FreeHGlobal(buf); }
-            if (hLinked == IntPtr.Zero) return null;
+            if (hLinked == IntPtr.Zero) return (false, null);
 
             // CreateProcessWithTokenW needs a PRIMARY token; the linked one is impersonation-class.
             var sa = new SECURITY_ATTRIBUTES { nLength = Marshal.SizeOf<SECURITY_ATTRIBUTES>() };
             if (!DuplicateTokenEx(hLinked, TOKEN_ALL_ACCESS, ref sa,
                     SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation, TOKEN_TYPE.TokenPrimary, out hPrimary))
-                return null;
+                return (false, null);
 
             var si = new STARTUPINFO { cb = Marshal.SizeOf<STARTUPINFO>() };
             var cmdLine = BuildCommandLine(exePath, args);   // mutable buffer
             if (!CreateProcessWithTokenW(hPrimary, LOGON_WITH_PROFILE, exePath, cmdLine,
                     showWindow ? 0u : CREATE_NO_WINDOW, IntPtr.Zero, workingDir, ref si, out var pi))
-                return null;
+                return (false, null);
 
+            started = true;
             try
             {
                 uint wait = WaitForSingleObject(pi.hProcess, (uint)timeoutMs);
-                if (wait != 0 /*WAIT_OBJECT_0*/) return null;
-                return GetExitCodeProcess(pi.hProcess, out uint exit) ? (int)exit : (int?)null;
+                if (wait != 0 /*WAIT_OBJECT_0*/) return (true, null);
+                return (true, GetExitCodeProcess(pi.hProcess, out uint exit) ? (int)exit : (int?)null);
             }
             finally
             {
@@ -84,7 +93,7 @@ public static class ProcessElevation
                 if (pi.hThread != IntPtr.Zero) CloseHandle(pi.hThread);
             }
         }
-        catch { return null; }
+        catch { return (started, null); }
         finally
         {
             if (hToken != IntPtr.Zero) CloseHandle(hToken);

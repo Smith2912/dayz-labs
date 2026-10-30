@@ -286,9 +286,8 @@ public sealed class BuildService
 
         // Direct engine: Binarize (excluding ODOL p3d, copied as-is) → CfgConvert → PboWriter (in-process) → sign.
         // Output lands in a work Addons, then publishes atomically into the loadable @<Mod>\Addons.
-        var workDir = Path.Combine(buildDir, ".work");
+        var workDir = Path.Combine(buildDir, ".work", Guid.NewGuid().ToString("N"));
         var workAddons = Path.Combine(workDir, "Addons");
-        try { if (Directory.Exists(workDir)) Directory.Delete(workDir, recursive: true); } catch { }
         Directory.CreateDirectory(workAddons);
         var prefix = PathResolver.ReadPrefix(projectDir);
         var startUtc = DateTime.UtcNow;
@@ -437,9 +436,8 @@ public sealed class BuildService
 
         var buildDir = ProjectPaths.BuildDir(root, packName);
         var addonsDir = ProjectPaths.BuildAddonsDir(root, packName);
-        var workRoot = Path.Combine(buildDir, ".work");
+        var workRoot = Path.Combine(buildDir, ".work", Guid.NewGuid().ToString("N"));
         var staging = Path.Combine(workRoot, "Addons");
-        if (Directory.Exists(workRoot)) try { Directory.Delete(workRoot, recursive: true); } catch { }
         Directory.CreateDirectory(staging);
 
         var results = new List<PackChildResult>();
@@ -562,13 +560,20 @@ public sealed class BuildService
     }
 
     // Skip-unchanged: same payload + same settings + output still present → nothing to do.
-    private (string stateHash, Dictionary<string, BuildCache.Entry> cache, BuildResult? skip) TryCacheSkip(
+    internal (string stateHash, Dictionary<string, BuildCache.Entry> cache, BuildResult? skip) TryCacheSkip(
         string modName, string projectDir, string exePath, string buildDir, string addonsDir,
         bool binarize, bool sign, bool force, string? signKey,
         PreflightView? preflight, Action<string>? onLine, string toolsDir)
     {
         var sha1Memo = new Dictionary<string, string>();
         var cache = BuildCache.Load(ConfigDir);
+        // Binarize/CfgConvert can consume unresolved inputs outside the project (P:, includes).
+        // Until dependencies are captured, a local-only fingerprint cannot justify reuse.
+        if (binarize)
+        {
+            onLine?.Invoke("build cache disabled for binarized builds: external dependencies are not tracked");
+            return ("", cache, null);
+        }
         string stateHash;
         try
         {
@@ -582,8 +587,11 @@ public sealed class BuildService
             onLine?.Invoke($"build cache unavailable: {ex.Message}; rebuilding");
             return ("", cache, null);
         }
+        var expectedPrefix = PathResolver.ReadPrefix(projectDir);
+        if (expectedPrefix.Length == 0) expectedPrefix = modName;
         if (!force && cache.TryGetValue(modName, out var cached) && cached.Hash == stateHash &&
-            BuildCache.CachedOutputMatches(cached, addonsDir, sign))
+            BuildCache.CachedOutputMatches(cached, addonsDir, sign) &&
+            PboValidator.Validate(cached.Pbo, expectedPrefix).ok)
         {
             onLine?.Invoke($"skip: no changes since last build ({cached.UpdatedUtc:u})");
             return (stateHash, cache, new BuildResult(true, modName, buildDir, cached.Pbo, false,
@@ -615,6 +623,10 @@ public sealed class BuildService
         string workPbo, DateTime startUtc, string stateHash, Dictionary<string, BuildCache.Entry> cache,
         string packOutput, PreflightView? preflight)
     {
+        var prefix = PathResolver.ReadPrefix(projectDir);
+        var validation = PboValidator.Validate(workPbo, prefix.Length > 0 ? prefix : modName);
+        if (!validation.ok)
+            return ("", FailResult(modName, preflight, $"archive verification failed: {validation.error}", packOutput));
         var (pubOk, pubDetail) = ModBuild.PublishAtomically(workAddons, addonsDir);
         if (!pubOk)
             return ("", FailResult(modName, preflight, $"publish failed: {pubDetail}", packOutput));

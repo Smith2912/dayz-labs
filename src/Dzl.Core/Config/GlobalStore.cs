@@ -10,6 +10,7 @@ public static class GlobalStore
 {
     public static GlobalConfig Load(string configPath)
     {
+        configPath = Dzl.Core.Ipc.IpcContract.CanonicalConfigPath(configPath);
         if (!File.Exists(configPath)) return new GlobalConfig();
         try { return JsonSerializer.Deserialize<GlobalConfig>(File.ReadAllText(configPath), ConfigStore.Json)
                 ?? throw new JsonException("Configuration must be an object."); }
@@ -18,6 +19,7 @@ public static class GlobalStore
 
     public static void Save(GlobalConfig cfg, string configPath)
     {
+        configPath = Dzl.Core.Ipc.IpcContract.CanonicalConfigPath(configPath);
         using var guard = StateFile.AcquireLock(configPath);
         SaveLocked(cfg, configPath);
     }
@@ -25,6 +27,7 @@ public static class GlobalStore
     /// <summary>Read, change and save one global config under the shared configuration lock.</summary>
     public static GlobalConfig Update(string configPath, Func<GlobalConfig, GlobalConfig> update)
     {
+        configPath = Dzl.Core.Ipc.IpcContract.CanonicalConfigPath(configPath);
         using var guard = StateFile.AcquireLock(configPath);
         var cfg = update(Load(configPath));
         SaveLocked(cfg, configPath);

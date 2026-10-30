@@ -34,7 +34,10 @@ half-written mod for the server to pick up.
 - Build any source project straight from My Mods with one click — no terminal, no scripts.
 - Let preflight catch config, asset-reference, baked-path, and path-hygiene problems early.
 - Build from your versioned source, with optional binarization and signing.
-- Skip unchanged mods automatically thanks to a content-hash cache, so rebuilds are fast.
+- Reuse unchanged non-binarized builds through a content-hash cache. Binarized builds
+  always rebuild until external P: dependencies and config includes can be tracked reliably.
+  Completed archives are checked for structure, prefix, payload length, and container
+  checksum before publication; this does not establish cryptographic signature acceptance.
 - Trust the "build succeeded" message — it's checked against the real output, not just the
   tool's exit code.
 

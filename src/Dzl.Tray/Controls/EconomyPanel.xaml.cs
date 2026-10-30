@@ -327,6 +327,18 @@ public partial class EconomyPanel : UserControl
     private void OnRestoreTypeBackup(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { Tag: string path }) return;
+        if (Vm.TypesEditor.HasUnsavedChanges)
+        {
+            var choice = MessageBox.Show("Types has unsaved edits. Save before restoring?\nYes — save; No — discard; Cancel — keep editing.",
+                "Restore backup", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+            if (choice == MessageBoxResult.Cancel) return;
+            if (choice == MessageBoxResult.Yes)
+            {
+                Vm.TypesEditor.SaveTypes();
+                if (Vm.TypesEditor.HasUnsavedChanges) return;
+            }
+            else Vm.TypesEditor.LoadTypes();
+        }
         var ok = System.Windows.MessageBox.Show(
             $"Restore types.xml from backup {System.IO.Path.GetFileName(path)}?\n\nThe current file is snapshotted first (undoable).",
             "Restore backup", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Warning) == System.Windows.MessageBoxResult.OK;
