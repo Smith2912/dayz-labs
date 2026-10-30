@@ -25,6 +25,7 @@ public static class ToolCatalog
         ("filebank",        "FileBank (pack PBO)",  @"PboUtils\FileBank.exe",              ToolKind.CliWrappable),
         ("dssignfile",      "DSSignFile (sign)", @"DsUtils\DSSignFile.exe",                ToolKind.CliWrappable),
         ("dscreatekey",     "DSCreateKey (keygen)",@"DsUtils\DSCreateKey.exe",             ToolKind.CliWrappable),
+        ("dschecksignatures", "DSCheckSignatures (verify)", @"DsUtils\DSCheckSignatures.exe", ToolKind.CliWrappable),
     };
 
     public static List<ToolEntry> Discover(string toolsPath)

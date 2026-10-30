@@ -69,14 +69,16 @@ public static class BuildEngine
 
             // 4. config.cpp → config.bin (root + nested); drop the .cpp once converted.
             var cfgExe = ToolCatalog.Find(toolsDir, "cfgconvert");
-            if (cfgExe is not null && cfgExe.Exists)
-                foreach (var cpp in Directory.EnumerateFiles(final, "config.cpp", SearchOption.AllDirectories))
-                {
-                    var bin = Path.Combine(Path.GetDirectoryName(cpp)!, "config.bin");
-                    var (cok, cout) = CfgConvert.ToBin(cfgExe.ExePath, cpp, bin);
-                    if (cok && File.Exists(bin)) { try { File.Delete(cpp); } catch { /* keep both */ } }
-                    else onLine?.Invoke($"cfgconvert: kept {Path.GetFileName(cpp)} as .cpp ({cout.Trim()})");
-                }
+            var configs = Directory.EnumerateFiles(final, "config.cpp", SearchOption.AllDirectories).ToList();
+            if (configs.Count > 0 && (cfgExe is null || !cfgExe.Exists))
+                return Fail("CfgConvert.exe not found (binary config conversion requested)");
+            foreach (var cpp in configs)
+            {
+                var bin = Path.Combine(Path.GetDirectoryName(cpp)!, "config.bin");
+                var (cok, cout) = CfgConvert.ToBin(cfgExe!.ExePath, cpp, bin);
+                if (!cok || !File.Exists(bin)) return Fail($"cfgconvert failed for {Path.GetRelativePath(final, cpp)}", cout);
+                File.Delete(cpp);
+            }
         }
 
         // 5. Pack the folder into <pboName>.pbo with the in-process writer (no FileBank / FileServer).
@@ -99,6 +101,9 @@ public static class BuildEngine
             var expectedSignature = pbo + "." + Path.GetFileNameWithoutExtension(signPrivateKey) + ".bisign";
             if (!File.Exists(expectedSignature))
                 return Fail($"signing {pboName}.pbo did not produce the expected signature {Path.GetFileName(expectedSignature)}", sout);
+            var publicKey = Path.ChangeExtension(signPrivateKey, ".bikey");
+            if (!File.Exists(publicKey) || !BiSignature.VerifyPayload(pbo, expectedSignature, new[] { publicKey }))
+                return Fail($"signature does not verify against the generated PBO and public key {Path.GetFileName(publicKey)}", sout);
         }
 
         try { Directory.Delete(workDir, recursive: true); } catch { /* harmless leftover */ }

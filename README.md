@@ -190,10 +190,15 @@ link checks passed; its layouts were reviewed at mobile, tablet, and desktop wid
 Follow-up blindspot validation and its host-specific limits are recorded in
 [the fix report](docs/validation/blindspot-fixes-2026-10-29.md).
 
-These are source-build and disposable-fixture results. Native DayZ server/client behavior,
-BankRev extraction, Binarize/CfgConvert output, cryptographic signature acceptance, and
-installer/update/uninstall behavior remain separate acceptance checks. No installer or
-public deployment was produced as part of these fixes.
+Subsequent [native tooling validation](docs/validation/native-tooling-2026-10-29.md)
+passed BankRev extraction/repair, Binarize and CfgConvert conversion, signing and
+payload verification, and elevated-parent launches of limited-token children in
+disposable fixtures. Legacy native utilities support Unicode directories through
+temporary ASCII aliases; affected file basenames must remain ASCII.
+
+Real DayZ server/client behavior, production asset coverage, game-side signature
+enforcement, and installer/update/uninstall behavior remain separate acceptance
+checks. No installer or public deployment was produced as part of these fixes.
 
 ## Independent development
 

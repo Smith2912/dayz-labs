@@ -123,6 +123,7 @@ public static class CeBackup
             var prefix = $"{stem}.";
             return Directory.EnumerateFiles(dir, $"{prefix}*{ext}")
                 .OrderByDescending(f => File.GetLastWriteTime(f))
+                .ThenByDescending(f => Path.GetFileName(f), StringComparer.Ordinal)
                 .Select(f =>
                 {
                     var nameNoExt = Path.GetFileNameWithoutExtension(f);
@@ -169,7 +170,8 @@ public static class CeBackup
         var stem   = Stem(filePath);
         var ext    = Ext(filePath);
         var files  = Directory.EnumerateFiles(dir, $"{stem}.*{ext}")
-            .OrderByDescending(f => File.GetLastWriteTime(f)).ToList();
+            .OrderByDescending(f => File.GetLastWriteTime(f))
+            .ThenByDescending(f => Path.GetFileName(f), StringComparer.Ordinal).ToList();
         var keep = (protectedFiles ?? Array.Empty<string>()).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var file in files)
         {

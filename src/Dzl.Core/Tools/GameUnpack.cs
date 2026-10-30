@@ -64,10 +64,13 @@ public static class GameUnpack
     /// Reports each PBO via <paramref name="onItem"/>; honours <paramref name="cancelled"/> between PBOs.</summary>
     public static UnpackResult UnpackAll(string bankRevExe, string gameDir, string destRoot, bool force,
         Action<UnpackItem>? onItem = null, Func<bool>? cancelled = null)
-        => UnpackAllCore(bankRevExe, gameDir, destRoot, force,
-            (pbo, dest) => ProcRunner.Run(bankRevExe, BankRevArgs(pbo, dest),
+    {
+        using var paths = new NativePathScope();
+        return UnpackAllCore(bankRevExe, gameDir, destRoot, force,
+            (pbo, dest) => ProcRunner.Run(bankRevExe, BankRevArgs(paths.FilePath(pbo), paths.DirectoryPath(dest)),
                 new RunOpts(WorkingDir: Path.GetDirectoryName(bankRevExe), TimeoutMs: 10 * 60 * 1000)).Ok,
             onItem, cancelled);
+    }
 
     // Injection covers orchestration/integrity with disposable archives, without invoking native tools.
     internal static UnpackResult UnpackAllCore(string bankRevExe, string gameDir, string destRoot, bool force,

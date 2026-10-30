@@ -38,10 +38,17 @@ public static class ImageToPaa
         var results = new List<PaaResult>();
         foreach (var job in PlanFolder(dir, recursive))
         {
-            var run = ProcRunner.Run(exePath, new[] { job.Input, job.Output },
-                new RunOpts(TimeoutMs: 120_000));
-            var r = new PaaResult(job.Input, job.Output, run.Ok && File.Exists(job.Output),
-                run.Ok ? "ok" : $"exit {run.Code}: {run.StdErr}");
+            PaaResult r;
+            try
+            {
+                using var paths = new NativePathScope();
+                var run = ProcRunner.Run(exePath, new[] { paths.FilePath(job.Input), paths.FilePath(job.Output) },
+                    new RunOpts(TimeoutMs: 120_000));
+                var ok = run.Ok && File.Exists(job.Output) && new FileInfo(job.Output).Length > 0;
+                r = new PaaResult(job.Input, job.Output, ok,
+                    ok ? "ok" : $"No valid PAA output (exit {run.Code}): {run.AllOutput}");
+            }
+            catch (Exception ex) { r = new PaaResult(job.Input, job.Output, false, ex.Message); }
             results.Add(r); progress?.Report(r);
         }
         return results;

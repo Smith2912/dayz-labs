@@ -51,9 +51,22 @@ public static class AddonBuilder
     {
         // No timeout: binarizing a big mod legitimately runs for minutes. OnLine preserves the
         // live interleaved order; the persisted log groups stdout before stderr.
-        var r = ProcRunner.Run(exePath,
-            PackArgs(sourceDir, outputDir, clear, packOnly, prefix, signKey, tempDir, includeFile),
-            new RunOpts(TimeoutMs: 0, OnLine: onLine));
-        return new PackResult(r.Ok, r.Code, r.AllOutput);
+        try
+        {
+            Directory.CreateDirectory(outputDir);
+            using var paths = new NativePathScope();
+            var source = paths.FilePath(Path.TrimEndingDirectorySeparator(Path.GetFullPath(sourceDir)));
+            if (!string.IsNullOrWhiteSpace(tempDir)) Directory.CreateDirectory(tempDir);
+            var r = ProcRunner.Run(exePath,
+                PackArgs(source, paths.DirectoryPath(outputDir), clear, packOnly, prefix,
+                    string.IsNullOrWhiteSpace(signKey) ? signKey : paths.FilePath(signKey),
+                    string.IsNullOrWhiteSpace(tempDir) ? tempDir : paths.DirectoryPath(tempDir),
+                    string.IsNullOrWhiteSpace(includeFile) ? includeFile : paths.FilePath(includeFile)),
+                new RunOpts(TimeoutMs: 0, OnLine: onLine));
+            var output = Path.Combine(outputDir, Path.GetFileName(source) + ".pbo");
+            var ok = r.Ok && Dzl.Core.Build.PboValidator.HasValidChecksum(output);
+            return new PackResult(ok, r.Code, r.AllOutput);
+        }
+        catch (Exception ex) { return new PackResult(false, -1, ex.Message); }
     }
 }

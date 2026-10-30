@@ -96,6 +96,10 @@ public class TypesXmlTests
         File.WriteAllText(f, "<types><type name=\"B\"/></types>");
         var b2 = TypesBackup.Snapshot(f, "20260101-110000");
 
+        // File.Copy preserves source timestamps; rapid saves can share the same timestamp.
+        var tiedTime = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+        foreach (var backup in TypesBackup.List(f)) File.SetLastWriteTimeUtc(backup.Path, tiedTime);
+
         var list = TypesBackup.List(f);
         list.Should().HaveCount(2);
         list[0].Stamp.Should().Be("20260101-110000");   // newest first

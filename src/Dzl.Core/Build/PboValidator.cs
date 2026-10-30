@@ -7,6 +7,35 @@ namespace Dzl.Core.Build;
 /// Checks structure and the container checksum, not a BI cryptographic signature.</summary>
 public static class PboValidator
 {
+    /// <summary>Validate the container checksum independently of the stored/compressed entry method.</summary>
+    public static bool HasValidChecksum(string path)
+        => VerifiedDigest(path) is not null;
+
+    internal static byte[]? VerifiedDigest(string path)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            if (stream.Length < 21) return null;
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA1);
+            var buffer = new byte[1024 * 1024];
+            long remaining = stream.Length - 21;
+            while (remaining > 0)
+            {
+                var read = stream.Read(buffer, 0, (int)Math.Min(buffer.Length, remaining));
+                if (read == 0) return null;
+                hash.AppendData(buffer, 0, read);
+                remaining -= read;
+            }
+            if (stream.ReadByte() != 0) return null;
+            var digest = new byte[20];
+            stream.ReadExactly(digest);
+            var computed = hash.GetHashAndReset();
+            return CryptographicOperations.FixedTimeEquals(computed, digest) ? computed : null;
+        }
+        catch { return null; }
+    }
+
     public static (bool ok, string error) Validate(string path, string expectedPrefix)
     {
         try

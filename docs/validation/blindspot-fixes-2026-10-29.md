@@ -45,6 +45,12 @@ it does not treat an unexecuted native scenario as passed.
 
 ## Remaining proof boundaries
 
+**Follow-up:** the subsequent [native tooling report](native-tooling-2026-10-29.md)
+records unskipped file-symlink identity, actual limited-token child launches,
+BankRev extraction/repair, config/model conversion, and signing verification.
+The counts and unexercised gates below describe this earlier candidate; the
+follow-up report is the current local native-fixture evidence.
+
 All eleven source corrections are implemented. Unit/integration fixtures do not establish
 native DayZ build/gameplay, BI signature acceptance, or installed-release behavior. Archive
 checksum validation is separate from cryptographic signature verification. Binarized builds

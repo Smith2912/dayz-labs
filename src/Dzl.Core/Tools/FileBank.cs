@@ -13,8 +13,17 @@ public static class FileBank
     public static (bool ok, string output) Pack(string exePath, string sourceDir, string outDir, string prefix,
         Action<string>? onLine = null)
     {
-        var r = ProcRunner.Run(exePath, PackArgs(sourceDir, outDir, prefix),
-            new RunOpts(TimeoutMs: 0, OnLine: onLine));
-        return (r.Ok, r.AllOutput);
+        try
+        {
+            Directory.CreateDirectory(outDir);
+            using var paths = new NativePathScope();
+            // Preserve the source leaf: FileBank derives the output PBO name from it.
+            var source = paths.FilePath(Path.TrimEndingDirectorySeparator(Path.GetFullPath(sourceDir)));
+            var r = ProcRunner.Run(exePath, PackArgs(source, paths.DirectoryPath(outDir), prefix),
+                new RunOpts(TimeoutMs: 0, OnLine: onLine));
+            var output = Path.Combine(outDir, Path.GetFileName(source) + ".pbo");
+            return (r.Ok && Dzl.Core.Build.PboValidator.HasValidChecksum(output), r.AllOutput);
+        }
+        catch (Exception ex) { return (false, ex.Message); }
     }
 }

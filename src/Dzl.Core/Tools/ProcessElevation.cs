@@ -6,20 +6,20 @@ namespace Dzl.Core.Tools;
 /// <summary>Launches a child process at the NORMAL (non-elevated) user level even when the current
 /// process is elevated — so things it mounts (the P: work drive) land in the user session the
 /// game/Explorer see.</summary>
-/// <remarks>Uses the elevated process's linked (limited) token + CreateProcessWithTokenW. Falls back
-/// to a normal launch when not elevated or if anything fails (so it never regresses).</remarks>
+/// <remarks>Uses the current interactive shell's non-elevated token + CreateProcessWithTokenW.
+/// If normal-user launch cannot be established, it fails closed instead of launching elevated.</remarks>
 public static class ProcessElevation
 {
     /// <summary>Run exe+args, returning the exit code (null if it couldn't start / timed out).
     /// De-elevates to the user session when <paramref name="deElevateIfAdmin"/> and we're admin.</summary>
     public static int? Run(string exePath, IReadOnlyList<string> args, string workingDir, int timeoutMs,
-                           bool deElevateIfAdmin, bool showWindow = false)
+                           bool deElevateIfAdmin, bool showWindow = false, Action<string>? onDiagnostic = null)
     {
         if (deElevateIfAdmin && OperatingSystem.IsWindows() && Dzl.Core.Env.EnvDetect.IsElevated())
         {
-            var attempt = TryRunDeElevated(exePath, args, workingDir, timeoutMs, showWindow);
+            var attempt = TryRunDeElevated(exePath, args, workingDir, timeoutMs, showWindow, onDiagnostic);
             return CompleteLaunch(() => attempt,
-                () => RunNormal(exePath, args, workingDir, timeoutMs, showWindow));
+                () => null); // Never silently run elevated when normal-user execution was requested.
         }
         return RunNormal(exePath, args, workingDir, timeoutMs, showWindow);
     }
@@ -44,41 +44,47 @@ public static class ProcessElevation
         catch { return null; }
     }
 
-    // Spawn the child via the elevated process's linked (limited) user token.
+    // Spawn the child with the current interactive shell's normal user token.
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    private static (bool Started, int? ExitCode) TryRunDeElevated(string exePath, IReadOnlyList<string> args, string workingDir, int timeoutMs, bool showWindow)
+    private static (bool Started, int? ExitCode) TryRunDeElevated(string exePath, IReadOnlyList<string> args, string workingDir, int timeoutMs, bool showWindow, Action<string>? diagnostic)
     {
+        (bool, int?) Failed(string operation)
+        {
+            diagnostic?.Invoke($"{operation} failed (Win32 {Marshal.GetLastWin32Error()})");
+            return (false, null);
+        }
         bool started = false;
-        IntPtr hProc = GetCurrentProcess();
-        IntPtr hToken = IntPtr.Zero, hLinked = IntPtr.Zero, hPrimary = IntPtr.Zero;
+        IntPtr hProc = IntPtr.Zero, hToken = IntPtr.Zero, hPrimary = IntPtr.Zero;
         try
         {
-            if (!OpenProcessToken(hProc, TOKEN_QUERY | TOKEN_DUPLICATE, out hToken)) return (false, null);
-
-            // Get the linked (lower-integrity, normal-user) token.
-            GetTokenInformation(hToken, TOKEN_INFORMATION_CLASS.TokenLinkedToken, IntPtr.Zero, 0, out int len);
-            if (len <= 0) return (false, null);
-            IntPtr buf = Marshal.AllocHGlobal(len);
+            var shell = GetShellWindow();
+            if (shell == IntPtr.Zero) return Failed("Interactive shell unavailable");
+            _ = GetWindowThreadProcessId(shell, out var pid);
+            if (!ProcessIdToSessionId(pid, out var shellSession) || shellSession != (uint)Process.GetCurrentProcess().SessionId)
+                return Failed("Shell session mismatch");
+            hProc = OpenProcess(0x1000 /* QUERY_LIMITED_INFORMATION */, false, pid);
+            if (hProc == IntPtr.Zero) return Failed("Open shell process");
+            if (!OpenProcessToken(hProc, TOKEN_QUERY | TOKEN_DUPLICATE, out hToken)) return Failed("OpenProcessToken");
+            var buf = Marshal.AllocHGlobal(sizeof(int));
             try
             {
-                if (!GetTokenInformation(hToken, TOKEN_INFORMATION_CLASS.TokenLinkedToken, buf, len, out len))
-                    return (false, null);
-                hLinked = Marshal.ReadIntPtr(buf);  // TOKEN_LINKED_TOKEN.LinkedToken
+                if (!GetTokenInformation(hToken, TOKEN_INFORMATION_CLASS.TokenElevation, buf, sizeof(int), out _))
+                    return Failed("Shell token elevation query");
+                if (Marshal.ReadInt32(buf) != 0) return Failed("Interactive shell is elevated");
             }
             finally { Marshal.FreeHGlobal(buf); }
-            if (hLinked == IntPtr.Zero) return (false, null);
-
-            // CreateProcessWithTokenW needs a PRIMARY token; the linked one is impersonation-class.
+            // Linked UAC tokens can be identification-only on real hosts (Win32 1346).
+            // Duplicate the actual shell primary token without enabling any privileges.
             var sa = new SECURITY_ATTRIBUTES { nLength = Marshal.SizeOf<SECURITY_ATTRIBUTES>() };
-            if (!DuplicateTokenEx(hLinked, TOKEN_ALL_ACCESS, ref sa,
+            if (!DuplicateTokenEx(hToken, 0x02000000 /* MAXIMUM_ALLOWED by the shell token's existing DACL */, ref sa,
                     SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation, TOKEN_TYPE.TokenPrimary, out hPrimary))
-                return (false, null);
+                return Failed("DuplicateTokenEx");
 
             var si = new STARTUPINFO { cb = Marshal.SizeOf<STARTUPINFO>() };
             var cmdLine = BuildCommandLine(exePath, args);   // mutable buffer
             if (!CreateProcessWithTokenW(hPrimary, LOGON_WITH_PROFILE, exePath, cmdLine,
                     showWindow ? 0u : CREATE_NO_WINDOW, IntPtr.Zero, workingDir, ref si, out var pi))
-                return (false, null);
+                return Failed("CreateProcessWithTokenW");
 
             started = true;
             try
@@ -93,12 +99,12 @@ public static class ProcessElevation
                 if (pi.hThread != IntPtr.Zero) CloseHandle(pi.hThread);
             }
         }
-        catch { return (started, null); }
+        catch (Exception ex) { diagnostic?.Invoke(ex.Message); return (started, null); }
         finally
         {
             if (hToken != IntPtr.Zero) CloseHandle(hToken);
-            if (hLinked != IntPtr.Zero) CloseHandle(hLinked);
             if (hPrimary != IntPtr.Zero) CloseHandle(hPrimary);
+            if (hProc != IntPtr.Zero) CloseHandle(hProc);
         }
     }
 
@@ -152,10 +158,10 @@ public static class ProcessElevation
         sb.Append('"');
     }
 
-    private const uint TOKEN_QUERY = 0x0008, TOKEN_DUPLICATE = 0x0002, TOKEN_ALL_ACCESS = 0xF01FF;
+    private const uint TOKEN_QUERY = 0x0008, TOKEN_DUPLICATE = 0x0002;
     private const uint LOGON_WITH_PROFILE = 0x00000001, CREATE_NO_WINDOW = 0x08000000;
 
-    private enum TOKEN_INFORMATION_CLASS { TokenLinkedToken = 19 }
+    private enum TOKEN_INFORMATION_CLASS { TokenElevation = 20 }
     private enum SECURITY_IMPERSONATION_LEVEL { SecurityImpersonation = 2 }
     private enum TOKEN_TYPE { TokenPrimary = 1 }
 
@@ -177,8 +183,15 @@ public static class ProcessElevation
     [StructLayout(LayoutKind.Sequential)]
     private struct PROCESS_INFORMATION { public IntPtr hProcess, hThread; public int dwProcessId, dwThreadId; }
 
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr GetCurrentProcess();
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetShellWindow();
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint GetWindowThreadProcessId(IntPtr window, out uint pid);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint pid);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ProcessIdToSessionId(uint pid, out uint session);
     [DllImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool OpenProcessToken(IntPtr h, uint access, out IntPtr token);
