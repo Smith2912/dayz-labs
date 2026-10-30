@@ -283,7 +283,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
         if (name.Length == 0) { Status = "✗ type name must not be empty"; return; }
         if (name.Any(char.IsWhiteSpace)) { Status = "✗ classname cannot contain spaces"; return; }
 
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddType(name)))
         {
             NewTypeName = "";
@@ -296,7 +296,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
     {
         if (SelectedType is not { } row) { Status = "✗ select a type to remove"; return; }
         if (!_confirm($"Remove the spawnable type \"{row.Name}\" and all its blocks?")) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveType(row.Name))) LoadTypesKeepingSelection();
     }
 
@@ -308,7 +308,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
         if (SelectedType is not { } row) { Status = "✗ select a type to rename"; return; }
         newName = (newName ?? "").Trim();
         if (newName.Length == 0) { Status = "✗ new name must not be empty"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RenameType(row.Name, newName)))
         {
             LoadTypesKeepingSelection();
@@ -320,7 +320,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
     public void SaveHoarder()
     {
         if (_suspendPersist || SelectedType is not { } row) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetHoarder(row.Name, SelectedHoarder))) { row.Hoarder = SelectedHoarder; }
     }
 
@@ -330,7 +330,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
         if (_suspendPersist || SelectedType is not { } row) return;
         if (!TryDamage(DamageMin, out var min)) { Status = "✗ damage min must be empty or a number 0..1"; return; }
         if (!TryDamage(DamageMax, out var max)) { Status = "✗ damage max must be empty or a number 0..1"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetDamage(row.Name, min, max))) row.DamageLabel = SpawnTypeRowVm.FormatDamage(min, max);
     }
 
@@ -338,7 +338,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
     public void AddChanceBlock(bool isAttachments)
     {
         if (SelectedType is not { } row) { Status = "✗ select a type first"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddBlock(row.Name, isAttachments, preset: null, chance: 1.0)))
             AfterBlockChange(row, isAttachments);
     }
@@ -349,7 +349,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
         if (SelectedType is not { } row) { Status = "✗ select a type first"; return; }
         preset = (preset ?? "").Trim();
         if (preset.Length == 0) { Status = "✗ pick a preset"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddBlock(row.Name, isAttachments, preset: preset, chance: null)))
         {
             AfterBlockChange(row, isAttachments);
@@ -369,7 +369,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
     public void RemoveBlock(SpawnBlockVm? block)
     {
         if (SelectedType is not { } row || block is null) { Status = "✗ select a block to remove"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveBlock(row.Name, block.IsAttachments, block.Index)))
             AfterBlockChange(row, block.IsAttachments);
     }
@@ -380,7 +380,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
         if (SelectedType is not { } row) return;
         preset = (preset ?? "").Trim();
         if (preset.Length == 0) { Status = "✗ pick a preset"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetBlockPreset(row.Name, block.IsAttachments, block.Index, preset)))
         {
             AfterBlockChange(row, block.IsAttachments);
@@ -393,7 +393,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
     {
         if (SelectedType is not { } row) return;
         if (!TryChance(chanceText, out var chance)) { Status = "✗ chance must be a number 0..1"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetBlockChance(row.Name, block.IsAttachments, block.Index, chance)))
             AfterBlockChange(row, block.IsAttachments);
     }
@@ -416,7 +416,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
         itemName = (itemName ?? "").Trim();
         if (itemName.Length == 0) { Status = "✗ item name must not be empty"; return; }
         if (!TryChance(chanceText, out var chance)) { Status = "✗ chance must be a number 0..1"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddItem(row.Name, block.IsAttachments, block.Index, itemName, chance)))
             AfterBlockChange(row, block.IsAttachments);
     }
@@ -424,7 +424,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
     public void RemoveItem(SpawnBlockVm? block, SpawnItemVm? item)
     {
         if (SelectedType is not { } row || block is null || item is null) { Status = "✗ select an item to remove"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveItem(row.Name, block.IsAttachments, block.Index, item.Name)))
             AfterBlockChange(row, block.IsAttachments);
     }
@@ -434,7 +434,7 @@ public sealed partial class SpawnableTypesVm : RawXmlEditorVm
         if (_suspendPersist || SelectedType is not { } row) return;
         if (string.IsNullOrWhiteSpace(item.Name)) { Status = "✗ item name must not be empty"; return; }
         var chance = Math.Clamp(item.Chance, 0, 1);
-        PushUndo();
+        if (!PushUndo()) return;
         Report(_svc.SetItem(row.Name, block.IsAttachments, block.Index, item.OriginalName, chance, item.Name));
         AfterBlockChange(row, block.IsAttachments);
     }

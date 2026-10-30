@@ -34,6 +34,13 @@ public partial class MainViewModel
     /// ComboBox's SelectionChanged doesn't fire a re-switch during programmatic refresh.</summary>
     public bool SuppressPresetSwitch { get; private set; }
 
+    public bool CanChangeMission()
+    {
+        if (!TypesEditor.HasUnsavedChanges) return true;
+        StatusLine = "Save the pending Types edits before changing the active mission.";
+        return false;
+    }
+
     [RelayCommand]
     private void SwitchPreset() => SwitchToPreset(SelectedPreset);
 
@@ -42,6 +49,7 @@ public partial class MainViewModel
     {
         var name = string.IsNullOrWhiteSpace(NewPresetName) ? ActivePreset : NewPresetName.Trim();
         if (string.IsNullOrEmpty(name)) return;
+        if (name != ActivePreset && !CanChangeMission()) return;
         // Make sure the live UI state (mods/order/mode) is in _cfg before snapshotting.
         Persist();
         Profiles.Save(_cfg, name, _configPath);
@@ -55,6 +63,7 @@ public partial class MainViewModel
     {
         if (SuppressPresetSwitch) return;
         if (string.IsNullOrEmpty(name) || name == ActivePreset) return;
+        if (!CanChangeMission()) { SelectedPreset = ActivePreset; return; }
         Profiles.SetActive(name, _configPath);
         Reload();
     }
@@ -66,6 +75,7 @@ public partial class MainViewModel
     {
         name = string.IsNullOrWhiteSpace(name) ? SelectedPreset : name.Trim();
         if (string.IsNullOrEmpty(name)) return;
+        if (name == ActivePreset && !CanChangeMission()) return;
         var ok = System.Windows.MessageBox.Show(
             $"Delete preset \"{name}\"? This cannot be undone.",
             "Delete preset", System.Windows.MessageBoxButton.YesNo,

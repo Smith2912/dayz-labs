@@ -45,9 +45,18 @@ public static partial class Profiles
     /// <summary>Persist the per-server slice of <paramref name="cfg"/> into the instance's <c>.dzl</c> folder.</summary>
     public static void Save(DzlConfig cfg, string name, string configPath)
     {
+        using var guard = Dzl.Core.Launch.StateFile.AcquireLock(configPath);
         var f = PresetFile(name, configPath);
         Directory.CreateDirectory(Path.GetDirectoryName(f)!);
-        File.WriteAllText(f, JsonSerializer.Serialize(cfg.InstancePart(), ConfigStore.Json));
+        if (File.Exists(f))
+        {
+            try { _ = JsonSerializer.Deserialize<InstanceConfig>(File.ReadAllText(f), ConfigStore.Json) ?? throw new JsonException("Instance config must be an object."); }
+            catch (JsonException ex) { throw new InvalidDataException($"Invalid instance configuration at '{f}'; the original was preserved.", ex); }
+            File.Copy(f, f + ".bak", overwrite: true);
+        }
+        var temp = f + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try { File.WriteAllText(temp, JsonSerializer.Serialize(cfg.InstancePart(), ConfigStore.Json)); File.Move(temp, f, overwrite: true); }
+        finally { if (File.Exists(temp)) File.Delete(temp); }
     }
 
     /// <summary>Compose the global config + the named instance into a runtime <see cref="DzlConfig"/>.</summary>
@@ -64,16 +73,71 @@ public static partial class Profiles
     /// disk; with <paramref name="removeFolder"/> the whole instance folder is deleted too.</summary>
     public static bool Delete(string name, string configPath, bool removeFolder = false)
     {
+        using var guard = Dzl.Core.Launch.StateFile.AcquireLock(configPath);
+        // Never sanitize a destructive target: ".", "..", separators and aliases could
+        // otherwise select a different directory than the registered instance.
+        if (string.IsNullOrWhiteSpace(name) || name != name.Trim() || name is "." or ".." ||
+            name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+            name.Contains('/') || name.Contains('\\') || Safe(name) != name ||
+            (OperatingSystem.IsWindows() && name.EndsWith('.')))
+            return false;
+
+        var servers = Path.GetFullPath(PresetsDir(configPath));
+        var instance = Path.GetFullPath(Path.Combine(servers, name));
+        if (!string.Equals(Path.GetDirectoryName(instance), servers,
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            return false;
+
+        // An instance must be registered, and neither its folder nor its record may
+        // redirect deletion through a junction. The configured project root itself may
+        // legitimately be a junction; it is the trust boundary, not a child of it.
+        var record = Path.Combine(instance, DzlDir, InstanceFileName);
+        var flatRecord = Path.Combine(FlatInstancesDir(configPath), name + ".json");
+        if (!File.Exists(record) && !File.Exists(flatRecord)) return false;
+        if (removeFolder && !File.Exists(record)) return false;
+        try
+        {
+            foreach (var path in new[] { servers, instance, Path.Combine(instance, DzlDir), FlatInstancesDir(configPath) })
+                if (Directory.Exists(path) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                    return false;
+            if (File.Exists(record) && (File.GetAttributes(record) & FileAttributes.ReparsePoint) != 0)
+                return false;
+            if (File.Exists(flatRecord) && (File.GetAttributes(flatRecord) & FileAttributes.ReparsePoint) != 0)
+                return false;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+
+        if (removeFolder && Directory.Exists(instance))
+        {
+            // Reject redirected descendants before recursive deletion. Do not walk
+            // through a reparse point even while inspecting it.
+            try
+            {
+                var pending = new Stack<string>();
+                pending.Push(instance);
+                while (pending.Count > 0)
+                    foreach (var child in Directory.EnumerateFileSystemEntries(pending.Pop()))
+                    {
+                        var attributes = File.GetAttributes(child);
+                        if ((attributes & FileAttributes.ReparsePoint) != 0) return false;
+                        if ((attributes & FileAttributes.Directory) != 0) pending.Push(child);
+                    }
+            }
+            catch (IOException) { return false; }
+            catch (UnauthorizedAccessException) { return false; }
+        }
+
         var removed = false;
 
         if (removeFolder)
         {
             // Delete the entire instance folder (config + serverDZ.cfg + mpmissions + profiles).
             var instDir = InstanceDir(name, configPath);   // always <ProjectsRoot>\servers\<name>
-            if (Directory.Exists(instDir))
+            if (Directory.Exists(instDir) && File.Exists(record))
             {
                 try { Directory.Delete(instDir, recursive: true); removed = true; }
-                catch { /* may be locked if the server is running */ }
+                catch { return false; /* may be locked if the server is running */ }
             }
         }
         else
@@ -93,16 +157,17 @@ public static partial class Profiles
         }
 
         // Always remove the legacy flat backup, or the migration would resurrect the instance on next load.
-        var flat = Path.Combine(FlatInstancesDir(configPath), Safe(name) + ".json");
+        var flat = flatRecord;
         if (File.Exists(flat)) { try { File.Delete(flat); } catch { /* best-effort */ } removed = true; }
         return removed;
     }
 
     public static void SetActive(string name, string configPath)
-        => GlobalStore.Save(GlobalStore.Load(configPath) with { ActiveInstance = name ?? "" }, configPath);
+        => GlobalStore.Update(configPath, g => g with { ActiveInstance = name ?? "" });
 
     public static (DzlConfig cfg, string savePath, string active) ResolveActive(string configPath)
     {
+        using var guard = Dzl.Core.Launch.StateFile.AcquireLock(configPath);
         Migrate(configPath);
         var g = GlobalStore.Load(configPath);
         var name = g.ActiveInstance;
@@ -120,6 +185,7 @@ public static partial class Profiles
 
     public static string EnsureDefault(string configPath)
     {
+        using var guard = Dzl.Core.Launch.StateFile.AcquireLock(configPath);
         Migrate(configPath);
         var g = GlobalStore.Load(configPath);
         if (!string.IsNullOrEmpty(g.ActiveInstance) || List(configPath).Count > 0)

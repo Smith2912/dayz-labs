@@ -96,7 +96,7 @@ public sealed partial class EventGroupsVm : RawXmlEditorVm
     {
         var name = (NewGroupName ?? "").Trim();
         if (name.Length == 0) { Status = "✗ group name must not be empty"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddGroup(name)))
         {
             NewGroupName = "";
@@ -109,7 +109,7 @@ public sealed partial class EventGroupsVm : RawXmlEditorVm
     {
         if (SelectedGroup is not { } g) { Status = "✗ select a group to remove"; return; }
         if (!_confirm($"Remove the group \"{g.Name}\" and all its children?")) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveGroup(g.Name))) ReloadView();
     }
 
@@ -119,7 +119,7 @@ public sealed partial class EventGroupsVm : RawXmlEditorVm
         if (SelectedGroup is not { } g) { Status = "✗ select a group first"; return; }
         var type = (NewChildType ?? "").Trim();
         if (type.Length == 0) { Status = "✗ child type must not be empty"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddChild(g.Name, type, 0, 0, 0, 0, lootMin: 0, lootMax: 1, deloot: false)))
         {
             NewChildType = "";
@@ -131,7 +131,7 @@ public sealed partial class EventGroupsVm : RawXmlEditorVm
     public void RemoveChild(EventGroupChildVm? child)
     {
         if (SelectedGroup is not { } g || child is null) { Status = "✗ select a child to remove"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveChild(g.Name, child.Index)))
         {
             LoadChildren();
@@ -148,7 +148,7 @@ public sealed partial class EventGroupsVm : RawXmlEditorVm
         { Status = "✗ x/y/z/angle must be numbers"; LoadChildren(); return; }
         if (!TryI(c.LootMinText, out var lmin) || !TryI(c.LootMaxText, out var lmax))
         { Status = "✗ lootmin/lootmax must be whole numbers"; LoadChildren(); return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (!Report(_svc.SetChild(g.Name, c.Index, type, x, y, z, a, lmin, lmax, c.Deloot))) LoadChildren();
     }
 }

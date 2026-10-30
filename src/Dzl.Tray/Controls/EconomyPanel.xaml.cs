@@ -19,7 +19,7 @@ public partial class EconomyPanel : UserControl
         Loaded += (_, _) =>
         {
             if (DataContext is not MainViewModel) return;
-            Vm.TypesEditor.LoadTypes();
+            if (!Vm.TypesEditor.HasUnsavedChanges) Vm.TypesEditor.LoadTypes();
             Vm.RefreshDictionaries();
             Vm.RefreshCeDashboard();   // Dashboard is the default tab
             RefreshTypesBackupsMenu();

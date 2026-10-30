@@ -13,7 +13,7 @@ export default defineConfig({
       title: 'DayZ Labs',
       description: 'Free Windows launcher for DayZ mod development — dev server and client lifecycle, ordered mods, log diagnosis, a validating build and signing pipeline, and Central Economy editors.',
       social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/Borcioo/dayz-labs' },
+        { icon: 'github', label: 'GitHub', href: 'https://github.com/Smith2912/dayz-labs' },
       ],
       customCss: ['./src/styles/theme.css'],
       components: {

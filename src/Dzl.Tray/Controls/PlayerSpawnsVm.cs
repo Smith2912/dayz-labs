@@ -247,7 +247,7 @@ public sealed partial class PlayerSpawnsVm : RawXmlEditorVm
         if (f.IsBool) value = f.Flag ? "true" : "false";
         else if (f.Number is { } n) value = Format(n);
         else return;   // a cleared numeric field leaves the file untouched (no way to express "remove")
-        PushUndo();
+        if (!PushUndo()) return;
         Report(_svc.SetParam(cat, f.Section, f.Key, value));
     }
 
@@ -257,7 +257,7 @@ public sealed partial class PlayerSpawnsVm : RawXmlEditorVm
         var newName = (param.Name ?? "").Trim();
         if (newName.Length == 0) { Status = "✗ param name must not be empty"; return; }
         if (!TryDouble(param.Value, out _)) { Status = "✗ value must be a number"; LoadCategoryDetail(); return; }
-        PushUndo();
+        if (!PushUndo()) return;
         // The key IS the element name, so a rename must move the element (not upsert under the new name and
         // orphan the old). Route a rename first, then set the value — same as Globals.
         if (!string.Equals(newName, param.OriginalName, StringComparison.Ordinal) && !string.IsNullOrEmpty(param.OriginalName))
@@ -275,7 +275,7 @@ public sealed partial class PlayerSpawnsVm : RawXmlEditorVm
                                  string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)))
         { Status = $"✗ param \"{name}\" already exists in {section}"; return; }
         if (!TryDouble(value, out _)) { Status = "✗ value must be a number"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetParam(cat, section, name, value ?? ""))) LoadCategoryDetail();
     }
 
@@ -285,7 +285,7 @@ public sealed partial class PlayerSpawnsVm : RawXmlEditorVm
         var name = (NewGroupName ?? "").Trim();
         if (name.Length == 0) { Status = "✗ group name must not be empty"; return; }
         var container = string.IsNullOrWhiteSpace(NewGroupContainer) ? "generator_posbubbles" : NewGroupContainer.Trim();
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddGroup(cat, container, name)))
         {
             NewGroupName = "";
@@ -301,7 +301,7 @@ public sealed partial class PlayerSpawnsVm : RawXmlEditorVm
         if (SelectedCategory is not { } cat || SelectedGroup is not { } grp)
         { Status = "✗ select a group to remove"; return; }
         if (!_confirm($"Remove the group \"{grp.Name}\" and all its positions?")) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveGroup(cat, grp.Container, grp.Name))) LoadCategoryDetail();
     }
 
@@ -311,7 +311,7 @@ public sealed partial class PlayerSpawnsVm : RawXmlEditorVm
         { Status = "✗ select a group to rename"; return; }
         newName = (newName ?? "").Trim();
         if (newName.Length == 0) { Status = "✗ new name must not be empty"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RenameGroup(cat, grp.Container, grp.Name, newName)))
         {
             var container = grp.Container;
@@ -328,7 +328,7 @@ public sealed partial class PlayerSpawnsVm : RawXmlEditorVm
         { Status = "✗ select a group first"; return; }
         if (!TryDouble(xText, out var x)) { Status = "✗ X must be a number"; return; }
         if (!TryDouble(zText, out var z)) { Status = "✗ Z must be a number"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddPos(cat, grp.Container, grp.Name, x, z)))
         {
             LoadPositionsForSelected();
@@ -340,7 +340,7 @@ public sealed partial class PlayerSpawnsVm : RawXmlEditorVm
     {
         if (SelectedCategory is not { } cat || SelectedGroup is not { } grp || pos is null)
         { Status = "✗ select a position to remove"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemovePos(cat, grp.Container, grp.Name, pos.Index)))
         {
             LoadPositionsForSelected();
@@ -353,7 +353,7 @@ public sealed partial class PlayerSpawnsVm : RawXmlEditorVm
         if (_suspendPersist || SelectedCategory is not { } cat || SelectedGroup is not { } grp) return;
         if (!TryDouble(pos.XText, out var x)) { Status = "✗ X must be a number"; return; }
         if (!TryDouble(pos.ZText, out var z)) { Status = "✗ Z must be a number"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (!Report(_svc.SetPos(cat, grp.Container, grp.Name, pos.Index, x, z))) LoadPositionsForSelected();
     }
 }

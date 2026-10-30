@@ -1,72 +1,22 @@
 ---
 title: DayZ Labs
-description: 'Free Windows launcher for DayZ mod development: run the dev server and client, manage mods, diagnose logs, build and sign PBOs, and edit the Central Economy.'
-template: splash
+description: A Windows workspace for developing DayZ mods. Launch, build, diagnose, and edit your mission economy.
 head:
   - tag: title
-    content: DayZ Labs — DayZ Mod Development Launcher for Windows
+    content: DayZ Labs — A workspace for DayZ mod development
+template: splash
 hero:
-  tagline: Drive your DayZ mod dev from one place — server &amp; client lifecycle, ordered mods, log diagnosis, a validating build pipeline, and Central Economy editors.
+  title: Less setup. More time in Chernarus.
+  tagline: Your server, client, mods, and mission files in one Windows workspace. Keep the next test run close at hand.
   actions:
-    - text: Download for Windows
-      link: https://github.com/Borcioo/dayz-labs/releases/latest/download/DayZLabs-win-Setup.exe
-      icon: down-arrow
-    - text: Get started
+    - text: Set up your workspace
       link: /dayz-labs/guides/getting-started/
       icon: right-arrow
-    - text: View on GitHub
-      link: https://github.com/Borcioo/dayz-labs
-      icon: external
-      variant: minimal
+    - text: Explore the source
+      link: https://github.com/Smith2912/dayz-labs
+      variant: secondary
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
-import ArchDiagram from '../../components/ArchDiagram.astro';
+import WorkspaceOverview from '../../components/WorkspaceOverview.astro';
 
-## What it does
-
-dzl starts and stops your DayZ dev server and client, manages an ordered mod selection plus
-named config presets, tails and diagnoses the DayZ logs, and wraps the DayZ Tools (Addon
-Builder, ImageToPAA, the **P:** work drive, and more) — then adds a validating build
-pipeline, Central Economy editors, Steam Workshop downloads, and git/GitHub integration.
-
-![The DayZ Labs dashboard — server & client lifecycle, mods, and live status at a glance](../../assets/screens/dashboard.png)
-
-*One installer, no admin rights, and it updates itself. [Download for Windows](https://github.com/Borcioo/dayz-labs/releases/latest/download/DayZLabs-win-Setup.exe) or read the [getting-started guide](/dayz-labs/guides/getting-started/).*
-
-<CardGrid>
-  <Card title="Server &amp; client lifecycle" icon="rocket">
-    Start, stop, and restart the dev server and client in debug or release mode — with
-    tracked PIDs so a recycled process is never mistaken for a live server.
-  </Card>
-  <Card title="Mods &amp; presets" icon="list-format">
-    An ordered mod selection (each tagged server / client / both) saved as named,
-    switchable config snapshots.
-  </Card>
-  <Card title="Logs &amp; diagnosis" icon="error">
-    Tail script / rpt / adm / client logs and match known failure signatures into
-    cause → fix entries.
-  </Card>
-  <Card title="Build pipeline &amp; signing" icon="setting">
-    A preflight gate, content-hash cache, signing, post-build verification, and atomic
-    publish around one Addon Builder call.
-  </Card>
-  <Card title="Central Economy editors" icon="document">
-    Edit types.xml, events, spawns, and the rest of the mission economy with linting and
-    versioned backups.
-  </Card>
-  <Card title="CLI · MCP · Tray" icon="puzzle">
-    One core behind three frontends — a command line, an MCP server an AI agent can drive,
-    and a WPF tray app.
-  </Card>
-</CardGrid>
-
-## Three frontends, one core
-
-Every capability lives in a single engine (`Dzl.Core`). The CLI, the MCP server, and the
-tray app are thin shells over it, so they behave identically — pick whichever fits your
-workflow.
-
-<ArchDiagram />
-
-[See how it fits together →](/dayz-labs/overview/the-big-idea/)
+<WorkspaceOverview />

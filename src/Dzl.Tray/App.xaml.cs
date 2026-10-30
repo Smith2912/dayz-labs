@@ -99,15 +99,14 @@ public partial class App : Application
         // Apply the dark Fluent theme app-wide (matches ThemesDictionary Theme="Dark").
         ApplicationThemeManager.Apply(ApplicationTheme.Dark);
 
-        // Single instance: bail out if another tray is already running.
-        _singleton = new Mutex(initiallyOwned: true, "dzl-tray-singleton", out bool createdNew);
+        // One tray authority per canonical configuration, not one for every config.
+        var configPath = ConfigPath();
+        _singleton = new Mutex(initiallyOwned: true, IpcContract.PipeNameFor(configPath) + "-tray", out bool createdNew);
         if (!createdNew)
         {
             Shutdown();
             return;
         }
-
-        var configPath = ConfigPath();
 
         // First run (no config file yet): walk the setup wizard before anything else.
         // The single-instance mutex is already held; a modal ShowDialog is safe here.
@@ -123,8 +122,9 @@ public partial class App : Application
         var (cfg, _, _) = Profiles.ResolveActive(configPath);
         if (cfg.EnableAutomationServer)
         {
-            _ = new PipeServer(() => new LauncherService(configPath)).RunAsync(_cts.Token);
             AutomationServerRunning = true;
+            var serverToken = _cts.Token;
+            _ = Task.Run(() => RunAutomationServerAsync(configPath, serverToken));
         }
 
         _tray = new TrayIcon(configPath);
@@ -260,6 +260,13 @@ public partial class App : Application
             File.AppendAllText(Path.Combine(dir, "crash.log"), $"{DateTime.Now:O}  {ex}\n\n");
         }
         catch { /* logging must never throw */ }
+    }
+
+    private static async Task RunAutomationServerAsync(string configPath, CancellationToken ct)
+    {
+        try { await new PipeServer(() => new LauncherService(configPath), IpcContract.PipeNameFor(configPath)).RunAsync(ct); }
+        catch (Exception ex) { LogCrash(ex); }
+        finally { AutomationServerRunning = false; }
     }
 
     protected override void OnExit(ExitEventArgs e)

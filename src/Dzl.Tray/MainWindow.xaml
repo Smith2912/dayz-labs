@@ -48,16 +48,18 @@
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="ListBoxItem">
-              <Border x:Name="Bd" CornerRadius="6" Padding="12,8" Margin="4,2"
+              <Border x:Name="Bd" CornerRadius="4" Padding="12,10" Margin="4,2" BorderThickness="3,0,0,0" BorderBrush="Transparent"
                       Background="Transparent">
                 <ContentPresenter VerticalAlignment="Center" />
               </Border>
               <ControlTemplate.Triggers>
+<Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource CeAccentBarBrush}" /></Trigger>
                 <Trigger Property="IsMouseOver" Value="True">
                   <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
-                  <Setter TargetName="Bd" Property="Background" Value="#332D7DD2" />
+                  <Setter TargetName="Bd" Property="Background" Value="{DynamicResource CeRowSelectedBrush}" />
+<Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource CeAccentBarBrush}" />
                   <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                   <Setter Property="FontWeight" Value="SemiBold" />
                 </Trigger>
@@ -120,7 +122,7 @@
 
         <!-- Status pills: SERVER/CLIENT/MCP + P:/GitHub/Steam — the same control renders the
              status footer at the bottom, so both bars always show the same state. -->
-        <ctl:StatusPills Grid.Column="3" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="3" Text="DEVELOPMENT WORKSPACE" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
       </Grid>
     </Border>
 
@@ -134,7 +136,7 @@
       <!-- Left rail. Plain-WPF ListBox-based nav: deterministic page switching via
            SelectionChanged (the Wpf.Ui NavigationView is page-navigation oriented and
            swallowed clicks when used as a bare rail). Top sections + pinned Settings. -->
-      <Border Grid.Column="0" Width="176"
+      <Border Grid.Column="0" Width="188"
               BorderThickness="0,0,1,0"
               BorderBrush="{DynamicResource ControlElevationBorderBrush}"
               Background="{DynamicResource ControlFillColorDefaultBrush}">

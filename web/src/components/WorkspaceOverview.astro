@@ -1,0 +1,32 @@
+---
+import { Image } from 'astro:assets';
+import dashboard from '../assets/screens/dashboard.png';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const workflows = [
+  ['01', 'Run a test session', 'Choose an instance and an ordered mod list. Start your server and client, then inspect the launch arguments when you need them.', 'features/server-lifecycle/', 'Server and client guide'],
+  ['02', 'Build the next iteration', 'Check your mod inputs, build a PBO, and configure signing with your local DayZ Tools installation.', 'features/build-pipeline/', 'Build pipeline guide'],
+  ['03', 'Tune the mission', 'Edit the Central Economy with validation and versioned backups. Follow the logs to diagnose the next issue.', 'features/central-economy/', 'Economy editor guide'],
+];
+---
+<div class="workspace-overview">
+  <p class="platform-note">WINDOWS 10 / 11 <span aria-hidden="true">·</span> COMMUNITY BUILT <span aria-hidden="true">·</span> OPEN SOURCE</p>
+  <figure class="workspace-preview">
+    <div class="preview-label"><span>THE WORKSPACE</span><span>Desktop app / dashboard</span></div>
+    <Image src={dashboard} alt="DayZ Labs dashboard with separate server and client controls, launch commands, mission source, and active mod lists." loading="eager" />
+    <figcaption>Server on the left. Client on the right. A shared instance keeps your test session in view.</figcaption>
+  </figure>
+  <section aria-labelledby="workflow-title" class="workflow-section">
+    <p class="eyebrow">FROM SOURCE TO TEST SESSION</p>
+    <h2 id="workflow-title">A shorter loop for mod development.</h2>
+    <div class="workflow-list">
+      {workflows.map(([number, title, text, path, label]) => <article class="workflow-row">
+        <span class="workflow-number" aria-hidden="true">{number}</span>
+        <h3>{title}</h3><div><p>{text}</p><a href={`${base}/${path}`}>{label} <span aria-hidden="true">→</span></a></div>
+      </article>)}
+    </div>
+  </section>
+  <section class="entry-points" aria-labelledby="entry-title">
+    <div><p class="eyebrow">WORK YOUR WAY</p><h2 id="entry-title">Desktop, terminal, or agent.</h2><p>The WPF app, CLI, and MCP server share Dzl.Core. Use the desktop for daily work or connect automation to the same engine.</p><a href={`${base}/overview/the-big-idea/`}>Explore the architecture →</a></div>
+    <div class="release-note"><h3>About this fork</h3><p>This is the Smith2912 development fork. Its automatic updater is disabled until a release channel is configured.</p><p>For the original project's published installers, visit <a href="https://github.com/Borcioo/dayz-labs/releases">upstream releases</a>. Those installers do not contain this fork's local changes.</p></div>
+  </section>
+</div>

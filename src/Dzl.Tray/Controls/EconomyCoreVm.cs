@@ -75,7 +75,7 @@ public sealed partial class EconomyCoreVm : RawXmlEditorVm
     private void OnFlagChanged(EconomyGroupVm g, string flag)
     {
         if (_suspend) return;
-        PushUndo();
+        if (!PushUndo()) return;
         Report(_svc.SetFlag(g.Name, flag, g.Get(flag)));
     }
 
@@ -89,7 +89,7 @@ public sealed partial class EconomyCoreVm : RawXmlEditorVm
         if (Groups.Any(g => string.Equals(g.Name, def.Name, StringComparison.OrdinalIgnoreCase)))
         { Status = $"✗ \"{def.Name}\" is already present"; return; }
 
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetGroup(def.Name, def.Init, def.Load, def.Respawn, def.Save))) ReloadView();
     }
 
@@ -100,7 +100,7 @@ public sealed partial class EconomyCoreVm : RawXmlEditorVm
         if (row is null) { Status = "✗ select a group to reset"; return; }
         if (EconomyCatalog.Find(row.Name) is not { } def)
         { Status = $"✗ \"{row.Name}\" is not a standard group — it has no engine default"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetGroup(def.Name, def.Init, def.Load, def.Respawn, def.Save)))
         {
             ReloadView();
@@ -116,7 +116,7 @@ public sealed partial class EconomyCoreVm : RawXmlEditorVm
         { Status = $"✗ \"{row.Name}\" is a standard economy group — reset it to default instead of removing it"; return; }
         if (!_confirm($"Remove the custom economy group \"{row.Name}\"?")) return;
 
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveGroup(row.Name))) ReloadView();
     }
 }

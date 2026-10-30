@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using System.Security.Cryptography;
 using Dzl.Core.Config;
 using Dzl.Core.Economy;
 
@@ -16,8 +17,24 @@ public abstract class CeFileService
     protected const string NoMissionMsg = "no mission resolved for the active server";
 
     protected readonly string ConfigPath;
+    private bool _editorBound;
+    private string? _editorFile;
+    private string? _editorRevision;
 
     protected CeFileService(string configPath) => ConfigPath = configPath;
+
+    /// <summary>Bind a long-lived editor to the file it loaded; ordinary one-shot services remain unbound.</summary>
+    public void BindEditorSession(string? filePath)
+    {
+        _editorBound = true;
+        _editorFile = filePath;
+        try { _editorRevision = filePath is null ? null : Revision(filePath); }
+        catch { _editorRevision = null; }
+    }
+    private bool MatchesEditor(string? path) => !_editorBound || string.Equals(_editorFile, path, StringComparison.OrdinalIgnoreCase);
+    private static string Revision(string path) => File.Exists(path)
+        ? Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))) : "missing";
+    private bool MatchesRevision(string path) => !_editorBound || (_editorRevision is not null && _editorRevision == Revision(path));
 
     /// <summary>File path relative to the mission dir, e.g. <c>db\events.xml</c> or
     /// <c>cfgrandompresets.xml</c>.</summary>
@@ -54,7 +71,9 @@ public abstract class CeFileService
     /// undo/redo, which snapshots the whole file before each edit and restores it verbatim.</summary>
     public string? ReadRaw()
     {
+        using var configGuard = Dzl.Core.Launch.StateFile.AcquireLock(ConfigPath);
         var path = FilePath();
+        if (!MatchesEditor(path)) return null;
         if (path is null || !File.Exists(path)) return null;
         try { return File.ReadAllText(path); }
         catch { return null; }
@@ -64,12 +83,17 @@ public abstract class CeFileService
     /// Used by undo/redo. Never throws.</summary>
     public (bool ok, string msg) WriteRaw(string xml)
     {
-        var path = FilePath();
-        if (path is null) return (false, NoMissionMsg);
         try
         {
+            using var configGuard = Dzl.Core.Launch.StateFile.AcquireLock(ConfigPath);
+            var path = FilePath();
+            if (path is null) return (false, NoMissionMsg);
+            if (!MatchesEditor(path)) return (false, "active mission changed; reload this editor before writing");
+            using var guard = CeBackup.LockFiles(new[] { path });
+            if (!MatchesRevision(path)) return (false, "file changed outside this editor; reload before writing");
             CeBackup.Snapshot(path);
-            File.WriteAllText(path, xml);
+            CeBackup.WriteTextAtomically(path, xml);
+            if (_editorBound) _editorRevision = Revision(path);
             return (true, "restored");
         }
         catch (Exception ex) { return (false, ex.Message); }
@@ -79,19 +103,24 @@ public abstract class CeFileService
     /// apply <paramref name="edit"/>, snapshot, write. Never throws.</summary>
     protected (bool ok, string msg) Edit(Func<XDocument, bool> edit, string successMsg, string noOpMsg)
     {
-        var path = FilePath();
-        if (path is null) return (false, NoMissionMsg);
-        if (!File.Exists(path) && SeedRootName is null)
-            return (false, $"{Path.GetFileName(RelativePath)} not found in the mission");
         try
         {
+            using var configGuard = Dzl.Core.Launch.StateFile.AcquireLock(ConfigPath);
+            var path = FilePath();
+            if (path is null) return (false, NoMissionMsg);
+            if (!MatchesEditor(path)) return (false, "active mission changed; reload this editor before writing");
+            if (!File.Exists(path) && SeedRootName is null)
+                return (false, $"{Path.GetFileName(RelativePath)} not found in the mission");
+            using var guard = CeBackup.LockFiles(new[] { path });
+            if (!MatchesRevision(path)) return (false, "file changed outside this editor; reload before writing");
             var doc = File.Exists(path)
                 ? CeXml.ParseDoc(File.ReadAllText(path))
                 : new XDocument(new XDeclaration("1.0", "UTF-8", null), new XElement(SeedRootName!));
 
             if (!edit(doc)) return (false, noOpMsg);
             CeBackup.Snapshot(path);
-            File.WriteAllText(path, CeXml.Serialize(doc));
+            CeBackup.WriteTextAtomically(path, CeXml.Serialize(doc));
+            if (_editorBound) _editorRevision = Revision(path);
             return (true, successMsg);
         }
         catch (Exception ex) { return (false, ex.Message); }

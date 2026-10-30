@@ -51,13 +51,26 @@ public partial class MainViewModel
     }
 
     /// <summary>Apply an edited config (from the Settings dialog): save then full reload.</summary>
-    public void ApplyConfig(DzlConfig edited)
+    public bool ApplyConfig(DzlConfig edited)
     {
+        if (!string.Equals(edited.ProjectsRoot, _cfg.ProjectsRoot, StringComparison.OrdinalIgnoreCase) && !CanChangeMission()) return false;
+        using var guard = Dzl.Core.Launch.StateFile.AcquireLock(_configPath);
+        var (current, _, currentActive) = Profiles.ResolveActive(_configPath);
+        if (currentActive != ActivePreset ||
+            System.Text.Json.JsonSerializer.Serialize(current.GlobalPart(currentActive), ConfigStore.Json) !=
+            System.Text.Json.JsonSerializer.Serialize(_cfg.GlobalPart(ActivePreset), ConfigStore.Json) ||
+            System.Text.Json.JsonSerializer.Serialize(current.InstancePart(), ConfigStore.Json) !=
+            System.Text.Json.JsonSerializer.Serialize(_cfg.InstancePart(), ConfigStore.Json))
+        {
+            StatusLine = "Configuration changed elsewhere. Reload settings before saving.";
+            return false;
+        }
         // Settings edits global fields; persist both slices so per-server values (still shown on the
         // Settings page for now) also survive. Globals → config.json, per-server → active instance.
         GlobalStore.Save(edited.GlobalPart(ActiveName), _configPath);
         Profiles.Save(edited, ActiveName, _configPath);
         Reload();
+        return true;
     }
 
     /// <summary>Effective work-drive source for display in Settings (or a hint when not resolvable).</summary>

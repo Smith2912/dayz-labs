@@ -59,13 +59,13 @@ public sealed partial class MessagesVm : RawXmlEditorVm
         if (_suspend) return;
         if (!TryInt(m.DelayText, out var delay) || !TryInt(m.RepeatText, out var repeat) || !TryInt(m.DeadlineText, out var deadline))
         { Status = "✗ delay / repeat / deadline must be whole numbers"; ReloadView(); return; }
-        PushUndo();
+        if (!PushUndo()) return;
         Report(_svc.SetAt(m.Index, new ServerMessage(delay, repeat, deadline, m.OnConnect, m.Shutdown, m.Text ?? "")));
     }
 
     public void AddMessage()
     {
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.Add(new ServerMessage(0, 0, 0, false, false, "")))) ReloadView();
     }
 
@@ -73,7 +73,7 @@ public sealed partial class MessagesVm : RawXmlEditorVm
     {
         if (m is null) { Status = "✗ select a message to remove"; return; }
         if (!_confirm("Remove this scheduled message?")) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveAt(m.Index))) ReloadView();
     }
 }

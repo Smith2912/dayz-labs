@@ -25,7 +25,9 @@ public class LauncherServiceStartGuardTests
         var pid = Environment.ProcessId;
         var image = ProcessManager.ImageOf(pid);
         image.Should().NotBeNull("the test host must be visible to tasklist");
-        StateFile.Write(configPath, target, pid, "debug", "test", image!);
+        using var current = System.Diagnostics.Process.GetCurrentProcess();
+        StateFile.Write(configPath, target, pid, "debug", "test", image!,
+            current.StartTime.ToUniversalTime(), current.MainModule!.FileName);
     }
 
     [Fact]
@@ -55,13 +57,14 @@ public class LauncherServiceStartGuardTests
     }
 
     [Fact]
-    public void Dead_recorded_pid_does_not_block_a_start()
+    public void Unverified_legacy_record_blocks_a_start()
     {
         var path = Seed();
-        // A pid that exists but whose image can't match the recorded one -> pruned as dead.
+        // A legacy record cannot establish ownership, even when its image does not match.
         StateFile.Write(path, "server", Environment.ProcessId, "debug", "test", "DefinitelyNotThisImage.exe");
         var svc = new LauncherService(path);
 
-        svc.StartTarget("server", "debug").Message.Should().NotContain("already up");
+        svc.StartTarget("server", "debug").Message.Should().Contain("unverified ownership");
+        StateFile.ReadRaw(path).Should().ContainKey("server");
     }
 }

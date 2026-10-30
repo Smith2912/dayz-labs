@@ -92,7 +92,7 @@ public sealed partial class GlobalsVm : RawXmlEditorVm
         if (newName.Length == 0) { Status = "✗ name must not be empty"; return; }
         if (string.Equals(newName, row.Name, StringComparison.Ordinal)) return;
 
-        PushUndo();
+        if (!PushUndo()) return;
         var (ok, msg) = _svc.RenameVar(row.Name, newName);
         if (!ok) { Status = "✗ " + msg; return; }
         LoadKeepingSelection();
@@ -108,7 +108,7 @@ public sealed partial class GlobalsVm : RawXmlEditorVm
         // modified") — persist with the catalog type regardless of the (disabled) detail combo.
         var type = row.IsKnown ? (GlobalsCatalog.Find(row.Name)?.Type ?? DetailType) : DetailType;
         if (!IsValidValue(DetailValue, type)) { Status = ValueError(type); return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetVar(row.Name, type, DetailValue ?? "")))
         {
             row.Type = type;
@@ -124,7 +124,7 @@ public sealed partial class GlobalsVm : RawXmlEditorVm
         if (row is null) { Status = "✗ select a var to reset"; return; }
         if (GlobalsCatalog.Find(row.Name) is not { } def)
         { Status = $"✗ \"{row.Name}\" is not a standard variable — it has no engine default"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetVar(def.Name, def.Type, def.Default)))
         {
             LoadKeepingSelection();
@@ -207,7 +207,7 @@ public sealed partial class GlobalsVm : RawXmlEditorVm
         if (_allRows.Any(r => string.Equals(r.Name, def.Name, StringComparison.OrdinalIgnoreCase)))
         { Status = $"✗ \"{def.Name}\" is already present"; return; }
 
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetVar(def.Name, def.Type, def.Default)))
         {
             LoadKeepingSelection();
@@ -226,7 +226,7 @@ public sealed partial class GlobalsVm : RawXmlEditorVm
         { Status = $"✗ \"{row.Name}\" is a standard engine variable — reset it to default instead of removing it"; return; }
         if (!_confirm($"Remove the custom variable \"{row.Name}\"?")) return;
 
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveVar(row.Name))) LoadKeepingSelection();
     }
 

@@ -95,7 +95,7 @@ public sealed partial class EnvironmentVm : RawXmlEditorVm
     {
         if (_suspend || SelectedTerritory is not { } t) return;
         if (!TryNum(item.ValText, out _)) { Status = $"✗ {item.Name} must be a number"; LoadDetail(); return; }
-        PushUndo();
+        if (!PushUndo()) return;
         Report(_svc.SetItem(t.Name, item.Name, (item.ValText ?? "").Trim()));
     }
 }

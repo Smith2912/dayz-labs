@@ -10,12 +10,13 @@ public sealed class ControlPlane
     private readonly string _configPath;
     private readonly string? _pipeName;
     // pipeName defaults to the shared pipe; tests pass a unique name to force the direct path.
-    public ControlPlane(string configPath, string? pipeName = null) { _configPath = configPath; _pipeName = pipeName; }
+    public ControlPlane(string configPath, string? pipeName = null) { _configPath = configPath; _pipeName = pipeName ?? IpcContract.PipeNameFor(configPath); }
 
     private string Route(IpcRequest req)
     {
         var resp = PipeClient.Send(req, pipeName: _pipeName);
         if (resp is not null && resp.Ok && resp.Json is not null) return resp.Json;
+        if (resp is not null) throw new InvalidOperationException(resp.Error ?? "Automation request failed.");
         return DzlJson.Serialize(IpcMethods.Table[req.Method](new LauncherService(_configPath), req));
     }
 

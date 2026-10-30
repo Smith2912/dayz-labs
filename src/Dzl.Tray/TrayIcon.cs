@@ -38,6 +38,7 @@ public sealed class TrayIcon : IDisposable
 
     private MainWindow? _window;
     private bool _lastUp;
+    private bool _lastUnknown;
     private bool _disposed;
 
     public TrayIcon(string configPath)
@@ -204,7 +205,7 @@ public sealed class TrayIcon : IDisposable
         {
             if (!_updates.CanUpdate)
             {
-                if (!silentIfCurrent) _icon.ShowNotification("dzl", "Updates are available only in the installed app.");
+                if (!silentIfCurrent) _icon.ShowNotification("dzl", "Automatic updates are not configured for this build.");
                 return;
             }
 
@@ -254,8 +255,11 @@ public sealed class TrayIcon : IDisposable
         }
     }
 
-    private void Quit(object sender, RoutedEventArgs e) =>
+    private void Quit(object sender, RoutedEventArgs e)
+    {
+        if (_window is not null && !_window.PrepareForShutdown()) return;
         Application.Current.Shutdown();
+    }
 
     // --- Status poll ---
 
@@ -264,22 +268,26 @@ public sealed class TrayIcon : IDisposable
         if (_polling) return;
         _polling = true;
         bool up;
+        bool unknown;
         try
         {
             // ReadLive validates each PID via tasklist (process spawn) — keep it off the UI thread.
             var live = await Task.Run(() => StateFile.ReadLive(_configPath, ProcessManager.ImageOf));
-            up = live.ContainsKey("server");
+            up = live.TryGetValue("server", out var info) && ProcessManager.InspectIdentity(info) == ProcessIdentity.Owned;
+            unknown = live.ContainsKey("server") && !up;
         }
         catch
         {
             up = false;
+            unknown = true;
         }
         finally { _polling = false; }
 
         if (_disposed) return;
-        if (up == _lastUp && _icon.Icon is not null) return;
+        if (up == _lastUp && unknown == _lastUnknown && _icon.Icon is not null) return;
         _lastUp = up;
-        _icon.ToolTipText = up ? "DayZ Labs — server UP" : "DayZ Labs — server down";
+        _lastUnknown = unknown;
+        _icon.ToolTipText = up ? "DayZ Labs — server UP" : unknown ? "DayZ Labs — server ownership unknown" : "DayZ Labs — server down";
 
         // Fresh icon each flip; dispose the one we previously created after the swap.
         var next = MakeDot(up ? UpColor : DownColor);

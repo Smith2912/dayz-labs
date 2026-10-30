@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Dzl.Core.Build.Preflight;
 
 namespace Dzl.Core.Build;
 
@@ -103,8 +104,7 @@ public static class PboWriter
                 outFile.WriteByte(0);
                 outFile.Write(sha.GetHashAndReset());
             }
-            if (File.Exists(outputPath)) File.Delete(outputPath);
-            File.Move(tmp, outputPath);
+            File.Move(tmp, outputPath, overwrite: true);
             onLine?.Invoke($"packed {entries.Count} file(s) -> {Path.GetFileName(outputPath)}");
             return (true, $"packed {entries.Count} file(s)");
         }
@@ -122,10 +122,12 @@ public static class PboWriter
         {
             var dir = stack.Pop();
             foreach (var sub in Directory.EnumerateDirectories(dir))
-                if (!ExcludeDirs.Contains(Path.GetFileName(sub)))
+                if (!ExcludeDirs.Contains(Path.GetFileName(sub)) &&
+                    !PathResolver.IsExcluded(Path.GetRelativePath(sourceDir, sub), PreflightOptions.DefaultExcludes))
                     stack.Push(sub);
             foreach (var file in Directory.EnumerateFiles(dir))
-                if (!ShouldSkipFile(Path.GetFileName(file)))
+                if (!ShouldSkipFile(Path.GetFileName(file)) &&
+                    !PathResolver.IsExcluded(Path.GetRelativePath(sourceDir, file), PreflightOptions.DefaultExcludes))
                     yield return file;
         }
     }

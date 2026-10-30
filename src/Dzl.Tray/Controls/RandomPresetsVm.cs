@@ -276,7 +276,7 @@ public sealed partial class RandomPresetsVm : RawXmlEditorVm
 
         var kind = row.Kind;
         var name = row.Name;
-        PushUndo();
+        if (!PushUndo()) return;
         if (renamed)
         {
             if (!Report(_svc.RenamePreset(kind, name, newName))) return;
@@ -295,7 +295,7 @@ public sealed partial class RandomPresetsVm : RawXmlEditorVm
         if (SelectedPreset is not { } row) return;
         var to = toCargo ? PresetKind.Cargo : PresetKind.Attachments;
         if (row.Kind == to) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetPresetKind(row.Kind, row.Name, to)))
         {
             var name = row.Name;
@@ -341,7 +341,7 @@ public sealed partial class RandomPresetsVm : RawXmlEditorVm
         var chance = Math.Clamp(NewPresetChanceValue, 0, 1);
         var kind = NewPresetIsCargo ? PresetKind.Cargo : PresetKind.Attachments;
 
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddPreset(kind, name, chance)))
         {
             NewPresetName = "";
@@ -354,7 +354,7 @@ public sealed partial class RandomPresetsVm : RawXmlEditorVm
     {
         if (SelectedPreset is not { } row) { Status = "✗ select a preset to remove"; return; }
         if (!_confirm($"Remove the {row.Kind} preset \"{row.Name}\" and all its items?")) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemovePreset(row.Kind, row.Name))) LoadPresetsKeepingSelection();
     }
 
@@ -363,7 +363,7 @@ public sealed partial class RandomPresetsVm : RawXmlEditorVm
     public void ToggleDisabled(PresetRowVm? row)
     {
         if (row is null) { Status = "✗ select a preset to toggle"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         var result = row.IsDisabled
             ? _svc.EnablePreset(row.Kind, row.Name)
             : _svc.DisablePreset(row.Kind, row.Name);
@@ -381,7 +381,7 @@ public sealed partial class RandomPresetsVm : RawXmlEditorVm
                       "be re-enabled per row."))
             return;
 
-        PushUndo();
+        if (!PushUndo()) return;
         var done = 0;
         foreach (var (kind, name) in unused)
             if (_svc.DisablePreset(kind, name).ok) done++;
@@ -413,7 +413,7 @@ public sealed partial class RandomPresetsVm : RawXmlEditorVm
         if (name.Length == 0) { Status = "✗ item name must not be empty"; return; }
         var chance = Math.Clamp(NewItemChanceValue, 0, 1);
 
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddItem(row.Kind, row.Name, name, chance)))
         {
             NewItemName = "";
@@ -425,7 +425,7 @@ public sealed partial class RandomPresetsVm : RawXmlEditorVm
     public void RemoveItem(PresetItemVm? item)
     {
         if (SelectedPreset is not { } row || item is null) { Status = "✗ select an item to remove"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveItem(row.Kind, row.Name, item.Name)))
         {
             LoadItemsForSelected();
@@ -442,7 +442,7 @@ public sealed partial class RandomPresetsVm : RawXmlEditorVm
         if (string.IsNullOrWhiteSpace(item.Name)) { Status = "✗ item name must not be empty"; LoadItemsForSelected(); return; }
         var chance = Math.Clamp(item.Chance, 0, 1);
 
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetItem(row.Kind, row.Name, item.OriginalName, chance, item.Name)))
         {
             item.CommitName();

@@ -49,13 +49,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int _port;
     [ObservableProperty] private bool _serverUp;
     [ObservableProperty] private bool _clientUp;
+    [ObservableProperty] private bool _serverOwnershipUnknown;
+    [ObservableProperty] private bool _clientOwnershipUnknown;
     [ObservableProperty] private string _serverStatus = "down";
     [ObservableProperty] private string _clientStatus = "down";
 
-    /// <summary>True when the named-pipe automation/IPC server is actually running this session
-    /// (read once from <see cref="App.AutomationServerRunning"/> in the ctor). Drives the MCP
-    /// status pill dot. Static at runtime — the server's started/not at launch and never toggles.</summary>
-    public bool AutomationOn { get; }
+    /// <summary>True when the named-pipe automation server is currently running.</summary>
+    public bool AutomationOn => App.AutomationServerRunning;
 
     /// <summary>Human-readable automation state for the MCP pill ("on"/"off").</summary>
     public string AutomationStatus => AutomationOn ? "on" : "off";
@@ -103,7 +103,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _configPath = configPath;
         _dispatcher = Dispatcher.CurrentDispatcher;
         _svc = new LauncherService(configPath);
-        AutomationOn = App.AutomationServerRunning;
         McpRegisterCommand =
             $"claude mcp add dzl --env DZL_CONFIG=\"{configPath}\" -- {McpLauncher.Resolve(AppContext.BaseDirectory, File.Exists)}";
 
@@ -160,13 +159,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (_disposed) return;
             var srv = r.Server.State == "up"
                 ? $"up ({r.Server.Source}/{r.Server.Mode} pid {r.Server.Pid})"
-                : "down";
+                : r.Server.State == "unknown" ? $"ownership unknown (pid {r.Server.Pid})" : "down";
             var cli = r.Client.State == "up"
                 ? $"up ({r.Client.Source}/{r.Client.Mode} pid {r.Client.Pid})"
-                : "down";
+                : r.Client.State == "unknown" ? $"ownership unknown (pid {r.Client.Pid})" : "down";
             Port = r.Port;
             ServerUp = r.Server.State == "up";
             ClientUp = r.Client.State == "up";
+            ServerOwnershipUnknown = r.Server.State == "unknown";
+            ClientOwnershipUnknown = r.Client.State == "unknown";
+            OnPropertyChanged(nameof(AutomationOn));
+            OnPropertyChanged(nameof(AutomationStatus));
+            OnPropertyChanged(nameof(ShowMcpTab));
             ServerStatus = srv;
             ClientStatus = cli;
             StatusLine = IsOfflineInstance
@@ -175,7 +179,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            if (!_disposed) StatusLine = "status error: " + ex.Message;
+            if (!_disposed) { ServerOwnershipUnknown = ClientOwnershipUnknown = true; StatusLine = "status error: " + ex.Message; }
         }
         finally { _statusBusy = false; }
     }

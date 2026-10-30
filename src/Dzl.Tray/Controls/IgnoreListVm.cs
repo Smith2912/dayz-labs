@@ -59,7 +59,7 @@ public sealed partial class IgnoreListVm : RawXmlEditorVm
         if (!IsValidClassname(name)) { Status = "✗ classname must be a bare identifier (no spaces or < > & \" ')"; return; }
         if (_all.Any(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase)))
         { Status = $"✗ \"{name}\" is already ignored"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.Add(name)))
         {
             NewName = "";
@@ -70,7 +70,7 @@ public sealed partial class IgnoreListVm : RawXmlEditorVm
     public void RemoveName(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.Remove(name))) ReloadView();
     }
 

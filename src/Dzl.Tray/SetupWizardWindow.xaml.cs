@@ -37,6 +37,8 @@ public partial class SetupWizardWindow : FluentWindow
     private const int LastStep = FinishStep;
     private readonly string _configPath;
     private int _step;
+    private CancellationTokenSource? _extractCancellation;
+    private bool _closeAfterExtract;
 
     private readonly Border[] _stepRows;
     private readonly UIElement[] _pages;
@@ -52,6 +54,14 @@ public partial class SetupWizardWindow : FluentWindow
         _pages = new UIElement[] { Page0, PageCheck, Page1, PageProj, Page2, Page3, Page4, Page6, Page7 };
 
         Loaded += (_, _) => ShowStep(0);
+        Closing += (_, e) =>
+        {
+            if (_extractCancellation is null) return;
+            e.Cancel = true;
+            _closeAfterExtract = true;
+            _extractCancellation.Cancel();
+            GameDataNote.Text = "Stopping extraction after the current file; completed files are retained.";
+        };
     }
 
     // ---- Step navigation ------------------------------------------------
@@ -201,9 +211,13 @@ public partial class SetupWizardWindow : FluentWindow
 
     private void OnReCheck(object sender, RoutedEventArgs e) => RunEnvCheck();
 
-    private void OnBack(object sender, RoutedEventArgs e) => ShowStep(_step - 1);
-    private void OnNext(object sender, RoutedEventArgs e) => ShowStep(_step + 1);
-    private void OnCancel(object sender, RoutedEventArgs e) { DialogResult = false; Close(); }
+    private void OnBack(object sender, RoutedEventArgs e) { if (_extractCancellation is null) ShowStep(_step - 1); }
+    private void OnNext(object sender, RoutedEventArgs e) { if (_extractCancellation is null) ShowStep(_step + 1); }
+    private void OnCancel(object sender, RoutedEventArgs e)
+    {
+        if (_extractCancellation is not null) { _closeAfterExtract = true; _extractCancellation.Cancel(); GameDataNote.Text = "Stopping extraction after the current file…"; return; }
+        DialogResult = false; Close();
+    }
 
     /// <summary>Next is gated only on the Paths step: DayZ install must be a real directory.
     /// Every later step is skippable, so Next stays enabled there.</summary>
@@ -419,6 +433,7 @@ public partial class SetupWizardWindow : FluentWindow
 
     private async void OnMountWorkDrive(object sender, RoutedEventArgs e)
     {
+        if (_extractCancellation is not null) return;
         var tools = ToolsPathBox.Text?.Trim() ?? "";
         if (tools.Length == 0)
         {
@@ -441,6 +456,7 @@ public partial class SetupWizardWindow : FluentWindow
 
     private async void OnUnmountWorkDrive(object sender, RoutedEventArgs e)
     {
+        if (_extractCancellation is not null) return;
         var tools = ToolsPathBox.Text?.Trim() ?? "";
         var exe = Path.Combine(tools, "Bin", "WorkDrive", "WorkDrive.exe");
         await RunWorkDriveOp("Unmounting…", () => WorkDrive.Unmount(exe));
@@ -492,6 +508,7 @@ public partial class SetupWizardWindow : FluentWindow
 
     private async Task RunExtract(bool showProgress)
     {
+        if (_extractCancellation is not null) return;
         var tools = ToolsPathBox.Text?.Trim() ?? "";
         var game = DayzPathBox.Text?.Trim() ?? "";
         if (tools.Length == 0)
@@ -509,6 +526,12 @@ public partial class SetupWizardWindow : FluentWindow
             GameDataNote.Text = "P: is not mounted — mount P: on the previous (Work drive) step first.";
             return;
         }
+        var destination = WorkDrive.MountTarget("P:");
+        if (string.IsNullOrWhiteSpace(destination) || !Directory.Exists(destination))
+        {
+            GameDataNote.Text = "Cannot resolve the mounted P: destination; extraction was not started.";
+            return;
+        }
         var bankrev = ToolCatalog.Find(tools, "bankrev");
         if (bankrev is null || !bankrev.Exists)
         {
@@ -517,6 +540,9 @@ public partial class SetupWizardWindow : FluentWindow
         }
 
         ExtractBtn.IsEnabled = GameDataReCheckBtn.IsEnabled = false;
+        BackBtn.IsEnabled = NextBtn.IsEnabled = false;
+        _extractCancellation = new CancellationTokenSource();
+        var cancellation = _extractCancellation;
         ExtractRing.Visibility = Visibility.Visible;
         GameDataNote.Text = showProgress
             ? "Extracting vanilla PBOs to P: with BankRev. First run unpacks everything (a few minutes); "
@@ -526,9 +552,10 @@ public partial class SetupWizardWindow : FluentWindow
         {
             // dzl unpacks every game PBO itself via BankRev (reliable + incremental) instead of WorkDrive.exe
             // /ExtractGameData, whose built-in extract is unreliable. Idempotent: a manifest skips current PBOs.
-            var r = await Task.Run(() => GameUnpack.UnpackAll(bankrev.ExePath, game, @"P:\", force: false,
+            var r = await Task.Run(() => GameUnpack.UnpackAll(bankrev.ExePath, game, destination, force: false,
                 onItem: it => { if (showProgress) Dispatcher.BeginInvoke(() =>
-                    GameDataNote.Text = $"[{it.Index}/{it.Total}] {Path.GetFileName(it.Pbo)} — {it.Status}"); }));
+                    GameDataNote.Text = $"[{it.Index}/{it.Total}] {Path.GetFileName(it.Pbo)} — {it.Status}"); },
+                cancelled: () => cancellation.IsCancellationRequested));
             var present = GameDataPresent();
             GameDataNote.Text = r.Ok
                 ? $"✓ {r.Message}. Vanilla game data is in P:\\ (P:\\DZ)."
@@ -538,6 +565,11 @@ public partial class SetupWizardWindow : FluentWindow
         {
             ExtractRing.Visibility = Visibility.Collapsed;
             ExtractBtn.IsEnabled = GameDataReCheckBtn.IsEnabled = true;
+            _extractCancellation = null;
+            cancellation.Dispose();
+            BackBtn.IsEnabled = _step > 0;
+            UpdateNextEnabled();
+            if (_closeAfterExtract) { _closeAfterExtract = false; Close(); }
         }
     }
 
@@ -689,25 +721,28 @@ public partial class SetupWizardWindow : FluentWindow
 
     private static string Show(string? s) => string.IsNullOrWhiteSpace(s) ? "(not set)" : s.Trim();
 
+    public static GlobalConfig MergeWizardSettings(GlobalConfig existing, string dayz, string tools,
+        string server, string root, List<string> scanRoots) => existing with
+    {
+        DayzPath = dayz, DayzToolsPath = tools, DayzServerPath = server, ProjectsRoot = root,
+        ScanRoots = scanRoots.Count > 0 ? scanRoots : existing.ScanRoots,
+    };
+
     private void OnFinish(object sender, RoutedEventArgs e)
     {
-        var defaults = DzlConfig.Default();
+        using var guard = Dzl.Core.Launch.StateFile.AcquireLock(_configPath);
+        var existing = GlobalStore.Load(_configPath);
+        var defaults = DzlConfig.Compose(existing, new InstanceConfig());
         var dayz = Show(DayzPathBox.Text) == "(not set)" ? defaults.DayzPath : DayzPathBox.Text.Trim();
         var tools = Show(ToolsPathBox.Text) == "(not set)" ? defaults.DayzToolsPath : ToolsPathBox.Text.Trim();
         var root = ProjectsRootBox.Text?.Trim() ?? "";
         var roots = ScanRootLines();
 
-        var cfg = defaults with
-        {
-            DayzPath = dayz,
-            DayzToolsPath = tools,
-            DayzServerPath = ServerPathBox.Text?.Trim() ?? "",
-            ProjectsRoot = root,   // "" → ProjectPaths.Root resolves to %USERPROFILE%\DayZProjects
-            ScanRoots = roots.Count > 0 ? roots : defaults.ScanRoots,
-        };
+        var global = MergeWizardSettings(existing, dayz, tools, ServerPathBox.Text?.Trim() ?? "", root, roots);
+        var cfg = DzlConfig.Compose(global, new InstanceConfig());
 
         // Persist the global config first so ServerService below reads the chosen ProjectsRoot.
-        GlobalStore.Save(cfg.GlobalPart("default"), _configPath);
+        GlobalStore.Save(global, _configPath);
 
         // Create the standard project tree under the resolved root.
         var resolvedRoot = ProjectPaths.Root(cfg);
@@ -727,7 +762,6 @@ public partial class SetupWizardWindow : FluentWindow
         else
         {
             Profiles.EnsureDefault(_configPath);
-            Profiles.SetActive("default", _configPath);
         }
 
         DialogResult = true;

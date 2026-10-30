@@ -45,10 +45,12 @@ public sealed class DictionaryService
 
     private (bool ok, string msg) EditLimits(Func<XDocument, bool> edit, string successMsg, string noOpMsg)
     {
+        using var configGuard = Dzl.Core.Launch.StateFile.AcquireLock(_configPath);
         var path = LimitsPath();
         if (path is null) return (false, "no mission resolved for the active server");
         try
         {
+            using var guard = CeBackup.LockFiles(new[] { path });
             XDocument doc;
             if (File.Exists(path))
             {
@@ -67,7 +69,7 @@ public sealed class DictionaryService
 
             if (!edit(doc)) return (false, noOpMsg);
             CeBackup.Snapshot(path);
-            File.WriteAllText(path, LimitsXml.ToXml(doc));
+            CeBackup.WriteTextAtomically(path, LimitsXml.ToXml(doc));
             return (true, successMsg);
         }
         catch (Exception ex) { return (false, ex.Message); }
@@ -136,10 +138,12 @@ public sealed class DictionaryService
 
     private (bool ok, string msg) EditLimitsUser(Func<XDocument, bool> edit, string successMsg, string noOpMsg)
     {
+        using var configGuard = Dzl.Core.Launch.StateFile.AcquireLock(_configPath);
         var path = LimitsUserPath();
         if (path is null) return (false, "no mission resolved for the active server");
         try
         {
+            using var guard = CeBackup.LockFiles(new[] { path });
             var doc = File.Exists(path)
                 ? LimitsUserXml.ParseDoc(File.ReadAllText(path))
                 : new XDocument(
@@ -150,7 +154,7 @@ public sealed class DictionaryService
 
             if (!edit(doc)) return (false, noOpMsg);
             CeBackup.Snapshot(path);
-            File.WriteAllText(path, LimitsUserXml.ToXml(doc));
+            CeBackup.WriteTextAtomically(path, LimitsUserXml.ToXml(doc));
             return (true, successMsg);
         }
         catch (Exception ex) { return (false, ex.Message); }

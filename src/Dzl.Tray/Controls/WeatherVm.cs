@@ -34,7 +34,7 @@ public sealed partial class WeatherVm : RawXmlEditorVm
 
     private void Persist(string toggle, bool value)
     {
-        PushUndo();
+        if (!PushUndo()) return;
         Report(_svc.SetToggle(toggle, value));
     }
 
@@ -74,7 +74,7 @@ public sealed partial class WeatherVm : RawXmlEditorVm
     {
         if (_suspend) return;
         if (!TryNum(k.ValueText, out var v)) { Status = $"✗ {k.Label} must be a number"; ReloadView(); return; }
-        PushUndo();
+        if (!PushUndo()) return;
         Report(_svc.SetKnob(k.Channel, k.Element, k.Attr, v));
     }
 }

@@ -34,3 +34,37 @@
   --sl-color-accent: #5f6e2a;
   --sl-color-accent-high: #2e3417;
 }
+/* Landing page: product context followed by task-oriented documentation. */
+.hero { padding-block: clamp(2rem, 6vw, 5rem) 2rem; }
+.hero h1 { max-width: 16ch; font-size: clamp(2.5rem, 5vw, 4.75rem); letter-spacing: -.045em; line-height: 1.04; }
+.hero .tagline { max-width: 52ch; font-size: 1.15rem; line-height: 1.65; }
+.hero .actions { gap: .75rem; }
+.sl-link-button { border-radius: .3rem; }
+.workspace-overview { --section-space: clamp(2.5rem, 6vw, 5rem); }
+.workspace-overview :is(p, h2, h3, figure, section, article, div) { margin-block-start: 0; }
+.workspace-overview .platform-note, .workspace-overview .eyebrow, .preview-label { font-family: var(--sl-font-mono); font-size: .75rem; letter-spacing: .07em; color: var(--sl-color-gray-2); }
+.platform-note { display: flex; flex-wrap: wrap; gap: .8rem; margin-bottom: 1.5rem; }
+.workspace-preview { margin: 0; border: 1px solid var(--sl-color-gray-4); border-radius: .4rem; overflow: hidden; background: var(--sl-color-gray-6); }
+.preview-label { display: flex; justify-content: space-between; gap: 1rem; padding: .8rem 1.25rem; border-bottom: 1px solid var(--sl-color-gray-4); }
+.workspace-preview img { display: block; width: 100%; height: auto; margin: 0; }
+.workspace-preview figcaption { padding: 1rem 1.25rem; font-size: .875rem; color: var(--sl-color-gray-2); }
+.workspace-overview .workflow-section, .workspace-overview .entry-points { margin-top: var(--section-space); }
+.workspace-overview h2 { font-size: clamp(1.8rem, 3vw, 2.5rem); letter-spacing: -.025em; line-height: 1.2; margin-bottom: 2rem; }
+.workflow-list { border-top: 1px solid var(--sl-color-gray-4); }
+.workflow-row { display: grid; grid-template-columns: 3rem 1fr 1.6fr; gap: 1.5rem; padding: 2rem 0; border-bottom: 1px solid var(--sl-color-gray-4); }
+.workflow-number { color: var(--sl-color-text-accent); font-family: var(--sl-font-mono); }
+.workflow-row h3 { font-size: 1.35rem; line-height: 1.3; }
+.workspace-overview p { line-height: 1.7; }
+.workflow-row p, .entry-points p { color: var(--sl-color-gray-2); margin-bottom: 1rem; }
+.workspace-overview a { text-underline-offset: .25em; }
+.entry-points { display: grid; grid-template-columns: 1.2fr 1fr; gap: 3rem; }
+.release-note { border-left: 3px solid var(--sl-color-accent); padding: 1.5rem; background: var(--sl-color-gray-6); }
+.release-note h3 { font-size: 1rem; }
+a:focus-visible, button:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--sl-color-text-accent); outline-offset: 4px; }
+@media (max-width: 48rem) {
+  .workflow-row { grid-template-columns: 2rem 1fr; gap: .75rem; padding-block: 1.5rem; }
+  .workflow-row > div { grid-column: 2; }
+  .entry-points { grid-template-columns: 1fr; gap: 2rem; }
+  .preview-label { flex-wrap: wrap; font-size: .65rem; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

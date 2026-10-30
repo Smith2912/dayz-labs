@@ -16,17 +16,40 @@ namespace Dzl.Tray;
 public partial class MainWindow : FluentWindow
 {
     private readonly MainViewModel _vm;
+    private bool _shutdownApproved;
 
     public MainWindow()
     {
         InitializeComponent();
         _vm = new MainViewModel(App.ConfigPath());
         DataContext = _vm;
-        Closed += (_, _) => { LogWindow.CloseAll(); _vm.Dispose(); };
+        Closing += (_, e) => { if (!_shutdownApproved && !ConfirmPendingTypes()) e.Cancel = true; };
+        Closed += (_, _) => { _economyWin?.Close(); LogWindow.CloseAll(); _vm.Dispose(); };
 
         // Select Dashboard on load so a panel is always visible; selecting the first
         // NavTop item raises OnNavChanged, which calls ShowPage("dashboard").
         Loaded += (_, _) => NavGeneral.SelectedIndex = 0;   // Dashboard
+    }
+
+    internal bool PrepareForShutdown()
+    {
+        if (!ConfirmPendingTypes()) return false;
+        _shutdownApproved = true;
+        return true;
+    }
+
+    private bool ConfirmPendingTypes()
+    {
+        if (!_vm.TypesEditor.HasUnsavedChanges) return true;
+        var choice = System.Windows.MessageBox.Show(
+            "Types contains unsaved edits. Save them before closing?", "DayZ Labs — unsaved changes",
+            System.Windows.MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+        if (choice == System.Windows.MessageBoxResult.Cancel) return false;
+        if (choice == System.Windows.MessageBoxResult.No) return true;
+        _vm.TypesEditor.SaveTypes();
+        if (!_vm.TypesEditor.HasUnsavedChanges) return true;
+        System.Windows.MessageBox.Show(_vm.TypesEditor.TypesStatus, "DayZ Labs — save failed", System.Windows.MessageBoxButton.OK, MessageBoxImage.Error);
+        return false;
     }
 
     /// <summary>Every nav rail (grouped sections + pinned system group). Selection is single across all of
@@ -179,6 +202,7 @@ public partial class MainWindow : FluentWindow
     /// "Run setup wizard…" button (SettingsView) and the "Setup" nav-rail item.</summary>
     internal void OpenSetupWizard()
     {
+        if (!_vm.CanChangeMission()) return;
         var wizard = new SetupWizardWindow(App.ConfigPath()) { Owner = this };
         if (wizard.ShowDialog() == true)
         {

@@ -11,7 +11,8 @@
   <!-- Dashboard. DataContext = MainViewModel (inherited from the host window).
        Two target-scoped columns: LEFT = everything SERVER, RIGHT = everything CLIENT.
        Each column stacks control card -> launch command -> active mods -> edit shortcuts. -->
-  <Grid>
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+  <Grid MinHeight="600">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />  <!-- summary strip -->
       <RowDefinition Height="*" />     <!-- two columns -->
@@ -76,9 +77,9 @@
               </StackPanel>
               <StackPanel Orientation="Horizontal">
                 <ui:Button Content="Start" Appearance="Success" Icon="{ui:SymbolIcon Play24}"
-                           MinWidth="90" Margin="0,0,8,0" Command="{Binding StartServerCommand}" />
+                           MinWidth="90" Margin="0,0,8,6" Command="{Binding StartServerCommand}" />
                 <ui:Button Content="Stop" Appearance="Danger" Icon="{ui:SymbolIcon Stop24}"
-                           MinWidth="90" Margin="0,0,8,0" Command="{Binding StopServerCommand}" />
+                           MinWidth="90" Margin="0,0,8,6" Command="{Binding StopServerCommand}" />
                 <ui:Button Content="Restart" Icon="{ui:SymbolIcon ArrowClockwise24}"
                            MinWidth="90" Command="{Binding RestartServerCommand}" />
               </StackPanel>
@@ -87,21 +88,17 @@
 
           <!-- Launch command card -->
           <ui:Card Grid.Row="1" Margin="0,0,0,12" Padding="16">
-            <StackPanel>
-              <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="Launch command" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                <local:InfoTip Text="{x:Static local:HelpText.Mode}" />
-              </StackPanel>
+            <Expander Header="Launch command" IsExpanded="False" HorizontalContentAlignment="Stretch">
               <Border CornerRadius="4" Padding="10"
                       Background="{DynamicResource ControlFillColorDefaultBrush}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="140">
                   <TextBox Text="{Binding ServerArgv, Mode=OneWay}" IsReadOnly="True"
                            BorderThickness="0" Background="Transparent"
                            FontFamily="Cascadia Mono, Consolas" FontSize="12"
-                           TextWrapping="Wrap" />
+                           TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" />
                 </ScrollViewer>
               </Border>
-            </StackPanel>
+            </Expander>
           </ui:Card>
 
           <!-- Mission source: which mpmissions the SERVER actually loads (serverDZ.cfg template vs the
@@ -153,7 +150,7 @@
           </ui:Card>
 
           <!-- Active mods (server). Border fills the * row (Card sizes to content). -->
-          <Border Grid.Row="3" Margin="0,0,0,12" Padding="16" CornerRadius="8"
+          <Border Grid.Row="3" MinHeight="140" MaxHeight="360" Margin="0,0,0,12" Padding="16" CornerRadius="8"
                   Background="{DynamicResource ControlFillColorDefaultBrush}"
                   BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1">
             <Grid>
@@ -171,7 +168,7 @@
               <Border Grid.Row="1" CornerRadius="4" Padding="4"
                       Background="{DynamicResource ControlFillColorDefaultBrush}">
                 <Grid>
-                  <TextBlock Text="(none enabled)" Margin="8,6" FontSize="12"
+                  <TextBlock Text="No mods enabled. Use Edit mods to choose your load order." TextWrapping="Wrap" Margin="8,6" FontSize="12"
                              Foreground="{DynamicResource TextFillColorTertiaryBrush}">
                     <TextBlock.Style>
                       <Style TargetType="TextBlock">
@@ -251,28 +248,28 @@
                   </StackPanel>
                 </Border>
               </StackPanel>
-              <StackPanel Orientation="Horizontal">
+              <WrapPanel Orientation="Horizontal">
                 <!-- Normal instance: connect-to-server vs boot-offline are two explicit choices. -->
                 <ui:Button Content="Start (online)" Appearance="Success" Icon="{ui:SymbolIcon Play24}"
-                           MinWidth="90" Margin="0,0,8,0"
+                           MinWidth="90" Margin="0,0,8,6"
                            ToolTip="Connect the client to the running server"
                            Visibility="{Binding IsOnlineInstance, Converter={StaticResource BoolToVis}}"
                            Command="{Binding StartClientCommand}" />
-                <ui:Button Content="Start (offline)" Appearance="Success" Icon="{ui:SymbolIcon Play24}"
-                           MinWidth="90" Margin="0,0,8,0"
+                <ui:Button Content="Start (offline)" Appearance="Secondary" Icon="{ui:SymbolIcon Play24}"
+                           MinWidth="90" Margin="0,0,8,6"
                            ToolTip="Load mods + mission without -connect — boots the mission offline (debug) / the main menu (normal)"
                            Visibility="{Binding IsOnlineInstance, Converter={StaticResource BoolToVis}}"
                            Command="{Binding StartClientNoConnectCommand}" />
                 <!-- Offline instance: no server exists, so Start is always offline. -->
                 <ui:Button Content="Start" Appearance="Success" Icon="{ui:SymbolIcon Play24}"
-                           MinWidth="90" Margin="0,0,8,0"
+                           MinWidth="90" Margin="0,0,8,6"
                            Visibility="{Binding IsOfflineInstance, Converter={StaticResource BoolToVis}}"
                            Command="{Binding StartClientCommand}" />
                 <ui:Button Content="Stop" Appearance="Danger" Icon="{ui:SymbolIcon Stop24}"
-                           MinWidth="90" Margin="0,0,8,0" Command="{Binding StopClientCommand}" />
+                           MinWidth="90" Margin="0,0,8,6" Command="{Binding StopClientCommand}" />
                 <ui:Button Content="Restart" Icon="{ui:SymbolIcon ArrowClockwise24}"
                            MinWidth="90" Command="{Binding RestartClientCommand}" />
-              </StackPanel>
+              </WrapPanel>
             </StackPanel>
           </ui:Card>
 
@@ -322,25 +319,21 @@
 
           <!-- Launch command card -->
           <ui:Card Grid.Row="2" Margin="0,0,0,12" Padding="16">
-            <StackPanel>
-              <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="Launch command" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                <local:InfoTip Text="{x:Static local:HelpText.Mode}" />
-              </StackPanel>
+            <Expander Header="Launch command" IsExpanded="False" HorizontalContentAlignment="Stretch">
               <Border CornerRadius="4" Padding="10"
                       Background="{DynamicResource ControlFillColorDefaultBrush}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="140">
                   <TextBox Text="{Binding ClientArgv, Mode=OneWay}" IsReadOnly="True"
                            BorderThickness="0" Background="Transparent"
                            FontFamily="Cascadia Mono, Consolas" FontSize="12"
-                           TextWrapping="Wrap" />
+                           TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" />
                 </ScrollViewer>
               </Border>
-            </StackPanel>
+            </Expander>
           </ui:Card>
 
           <!-- Active mods (client). Border fills the * row (Card sizes to content). -->
-          <Border Grid.Row="3" Margin="0,0,0,12" Padding="16" CornerRadius="8"
+          <Border Grid.Row="3" MinHeight="140" MaxHeight="360" Margin="0,0,0,12" Padding="16" CornerRadius="8"
                   Background="{DynamicResource ControlFillColorDefaultBrush}"
                   BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1">
             <Grid>
@@ -358,7 +351,7 @@
               <Border Grid.Row="1" CornerRadius="4" Padding="4"
                       Background="{DynamicResource ControlFillColorDefaultBrush}">
                 <Grid>
-                  <TextBlock Text="(none enabled)" Margin="8,6" FontSize="12"
+                  <TextBlock Text="No mods enabled. Use Edit mods to choose your load order." TextWrapping="Wrap" Margin="8,6" FontSize="12"
                              Foreground="{DynamicResource TextFillColorTertiaryBrush}">
                     <TextBlock.Style>
                       <Style TargetType="TextBlock">
@@ -400,4 +393,5 @@
         </Grid>
       </Grid>
   </Grid>
+  </ScrollViewer>
 </UserControl>

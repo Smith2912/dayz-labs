@@ -19,6 +19,14 @@ That's it. You don't need any developer tools or a code editor to run DayZ Labs.
 
 ## 1. Download and install
 
+:::note[Choose your version]
+These installer steps describe the original project's published app. This documentation
+also accompanies the [Smith2912 development fork](https://github.com/Smith2912/dayz-labs).
+For that fork, check its releases or build the source with the .NET 8 SDK using
+`dotnet build Dzl.sln -c Debug`. Its updater is disabled until a release channel is
+configured; an upstream installer does not contain this fork's changes.
+:::
+
 1. Go to the [Releases page](https://github.com/Borcioo/dayz-labs/releases).
 2. Download **`DayZLabs-win-Setup.exe`** from the latest release.
 3. Run it.

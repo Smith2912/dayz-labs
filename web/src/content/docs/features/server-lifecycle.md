@@ -10,7 +10,7 @@ try again." DayZ Labs turns that into a few clicks on the **Dashboard** — no m
 hand-built command lines.
 
 Everything on this page happens in the installed tray app. If you haven't set it up yet,
-start with [Install & first run](/dayz-labs/start/install/).
+start with [Getting started](/dayz-labs/guides/getting-started/).
 
 ## The Dashboard
 

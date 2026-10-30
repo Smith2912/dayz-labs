@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.Input;
+using Dzl.Core.App;
 
 namespace Dzl.Tray.ViewModels;
 
@@ -8,7 +9,19 @@ public partial class MainViewModel
 
     private void RunOp(Action op) => Task.Run(() =>
     {
-        try { op(); } catch { /* surfaced via status poll */ }
+        try { op(); }
+        catch (Exception ex) { _dispatcher.BeginInvoke(() => System.Windows.MessageBox.Show(ex.Message, "DayZ Labs — operation failed")); }
+        finally { _dispatcher.BeginInvoke(() => _ = RefreshStatusAsync()); }
+    });
+
+    private void RunLifecycleOp(Func<OpResult> op) => Task.Run(() =>
+    {
+        try
+        {
+            var result = op();
+            if (!result.Ok) _dispatcher.BeginInvoke(() => System.Windows.MessageBox.Show(result.Message, "DayZ Labs — operation failed"));
+        }
+        catch (Exception ex) { _dispatcher.BeginInvoke(() => System.Windows.MessageBox.Show(ex.Message, "DayZ Labs — operation failed")); }
         finally { _dispatcher.BeginInvoke(() => _ = RefreshStatusAsync()); }
     });
 
@@ -17,31 +30,31 @@ public partial class MainViewModel
     // a double-click in that window.
 
     [RelayCommand(CanExecute = nameof(CanStartServer))]
-    private void StartServer() => RunOp(() => _svc.StartTarget("server", Mode));
-    private bool CanStartServer() => !ServerUp;
+    private void StartServer() => RunLifecycleOp(() => _svc.StartTarget("server", Mode));
+    private bool CanStartServer() => !ServerUp && !ServerOwnershipUnknown;
 
     [RelayCommand(CanExecute = nameof(CanStopServer))]
-    private void StopServer() => RunOp(() => _svc.StopTarget("server"));
+    private void StopServer() => RunLifecycleOp(() => _svc.StopTarget("server"));
     private bool CanStopServer() => ServerUp;
 
     [RelayCommand(CanExecute = nameof(CanStopServer))]
-    private void RestartServer() => RunOp(() => _svc.RestartTarget("server", Mode));
+    private void RestartServer() => RunLifecycleOp(() => _svc.RestartTarget("server", Mode));
 
     [RelayCommand(CanExecute = nameof(CanStartClient))]
-    private void StartClient() => RunOp(() => _svc.StartTarget("client", Mode));
-    private bool CanStartClient() => !ClientUp;
+    private void StartClient() => RunLifecycleOp(() => _svc.StartTarget("client", Mode));
+    private bool CanStartClient() => !ClientUp && !ClientOwnershipUnknown;
 
     /// <summary>Start the client without <c>-connect</c>: mods + mission load, the game
     /// stays in the main menu (diag boots the mission offline) instead of auto-joining.</summary>
     [RelayCommand(CanExecute = nameof(CanStartClient))]
-    private void StartClientNoConnect() => RunOp(() => _svc.StartTarget("client", Mode, connect: false));
+    private void StartClientNoConnect() => RunLifecycleOp(() => _svc.StartTarget("client", Mode, connect: false));
 
     [RelayCommand(CanExecute = nameof(CanStopClient))]
-    private void StopClient() => RunOp(() => _svc.StopTarget("client"));
+    private void StopClient() => RunLifecycleOp(() => _svc.StopTarget("client"));
     private bool CanStopClient() => ClientUp;
 
     [RelayCommand(CanExecute = nameof(CanStopClient))]
-    private void RestartClient() => RunOp(() => _svc.RestartTarget("client", Mode));
+    private void RestartClient() => RunLifecycleOp(() => _svc.RestartTarget("client", Mode));
 
     partial void OnServerUpChanged(bool value)
     {
@@ -49,6 +62,9 @@ public partial class MainViewModel
         StopServerCommand.NotifyCanExecuteChanged();
         RestartServerCommand.NotifyCanExecuteChanged();
     }
+
+    partial void OnServerOwnershipUnknownChanged(bool value) => StartServerCommand.NotifyCanExecuteChanged();
+    partial void OnClientOwnershipUnknownChanged(bool value) => StartClientCommand.NotifyCanExecuteChanged();
 
     partial void OnClientUpChanged(bool value)
     {

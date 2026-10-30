@@ -80,7 +80,12 @@ public partial class SettingsView : UserControl
             SteamCmdPath = CfgSteamCmdPath.Text.Trim(),
             SteamLogin = CfgSteamLogin.Text.Trim(),
         };
-        Vm.ApplyConfig(edited);
+        if (!Vm.ApplyConfig(edited))
+        {
+            ConfigError.Text = Vm.StatusLine;
+            ConfigError.Visibility = Visibility.Visible;
+            return;
+        }
         Reload();
     }
 

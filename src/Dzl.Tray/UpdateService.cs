@@ -13,11 +13,15 @@ public sealed class UpdateService
 {
     public const string RepoUrl = "https://github.com/Borcioo/dayz-labs";
 
+    // The fork has no independently qualified package identity/feed yet. Do not
+    // offer upstream packages over a fork build until a release channel is chosen.
+    private static bool HasConfiguredReleaseChannel => false;
+
     // UpdateManager's ctor reads VelopackLocator.Current, which THROWS until VelopackApp.Build().Run()
     // has run (i.e. in a dev/test host that never bootstrapped Velopack). So we build it lazily and
     // only once a locator is set; otherwise every member stays a safe no-op (CanUpdate == false).
     private readonly UpdateManager? _mgr =
-        VelopackLocator.IsCurrentSet
+        HasConfiguredReleaseChannel && VelopackLocator.IsCurrentSet
             ? new UpdateManager(new GithubSource(RepoUrl, null, false))
             : null;
 

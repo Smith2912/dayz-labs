@@ -97,6 +97,9 @@ public static class BuildEngine
             onLine?.Invoke($"sign: {pboName}.pbo");
             var (sok, sout) = DsTools.Sign(dsExe.ExePath, signPrivateKey!, pbo);
             if (!sok) return Fail($"signing {pboName}.pbo failed", sout);
+            var expectedSignature = pbo + "." + Path.GetFileNameWithoutExtension(signPrivateKey) + ".bisign";
+            if (!File.Exists(expectedSignature))
+                return Fail($"signing {pboName}.pbo did not produce the expected signature {Path.GetFileName(expectedSignature)}", sout);
         }
 
         try { Directory.Delete(workDir, recursive: true); } catch { /* harmless leftover */ }

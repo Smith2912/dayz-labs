@@ -34,7 +34,7 @@ public sealed class LauncherService
 
     private TargetState TargetOf(IReadOnlyDictionary<string, ProcInfo> live, string t)
         => live.TryGetValue(t, out var i)
-            ? new TargetState("up", i.Source, i.Mode, i.Pid)
+            ? new TargetState(ProcessManager.InspectIdentity(i) == ProcessIdentity.Owned ? "up" : "unknown", i.Source, i.Mode, i.Pid)
             : new TargetState("down", null, null, null);
 
     public StatusReport Status()
@@ -165,7 +165,9 @@ public sealed class LauncherService
     {
         var live = StateFile.ReadLive(_configPath, ProcessManager.ImageOf);
         return live.TryGetValue(target, out var i)
-            ? new OpResult(false, $"{target} already up (pid {i.Pid}, {i.Source}/{i.Mode}) — stop or restart it instead")
+            ? new OpResult(false, ProcessManager.InspectIdentity(i) == ProcessIdentity.Owned
+                ? $"{target} already up (pid {i.Pid}, {i.Source}/{i.Mode}) — stop or restart it instead"
+                : $"{target} has an unverified ownership record for pid {i.Pid}; resolve it before starting")
             : null;
     }
 
@@ -173,6 +175,7 @@ public sealed class LauncherService
     /// <c>-connect</c>/<c>-port</c>, so it stays in the main menu instead of auto-joining.</summary>
     public OpResult Start(string mode, bool client, string source = "cli", bool noConnect = false)
     {
+        using var custody = StateFile.AcquireLock(_configPath);
         var (cfg, _, _) = Resolve();
         if (OfflineGuard(cfg) is { } blocked) return blocked;
         if (AlreadyUpGuard("server") is { } up) return up;
@@ -188,6 +191,7 @@ public sealed class LauncherService
 
     public OpResult Stop(bool client, string source = "cli")  // source unused by Stop; keep for symmetry
     {
+        using var custody = StateFile.AcquireLock(_configPath);
         var (cfg, _, _) = Resolve();
         return Op(() =>
         {
@@ -199,6 +203,7 @@ public sealed class LauncherService
 
     public OpResult Restart(string mode, string source = "cli")
     {
+        using var custody = StateFile.AcquireLock(_configPath);
         var (cfg, _, _) = Resolve();
         if (OfflineGuard(cfg) is { } blocked) return blocked;
         return Op(() =>
@@ -213,6 +218,7 @@ public sealed class LauncherService
     /// never connects regardless of the flag.</summary>
     public OpResult StartTarget(string target, string mode, string source = "tui", bool connect = true)
     {
+        using var custody = StateFile.AcquireLock(_configPath);
         var (cfg, _, _) = Resolve();
         if (target == "server" && OfflineGuard(cfg) is { } blocked) return blocked;
         if (AlreadyUpGuard(target) is { } up) return up;
@@ -227,6 +233,7 @@ public sealed class LauncherService
 
     public OpResult StopTarget(string target, string source = "tui")
     {
+        using var custody = StateFile.AcquireLock(_configPath);
         var (cfg, _, _) = Resolve();
         return Op(() =>
         {
@@ -237,6 +244,7 @@ public sealed class LauncherService
 
     public OpResult RestartTarget(string target, string mode, string source = "tui")
     {
+        using var custody = StateFile.AcquireLock(_configPath);
         var (cfg, _, _) = Resolve();
         if (target == "server" && OfflineGuard(cfg) is { } blocked) return blocked;
         return Op(() =>

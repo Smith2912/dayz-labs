@@ -95,7 +95,7 @@ public sealed partial class EventSpawnsVm : RawXmlEditorVm
     {
         var name = (NewEventName ?? "").Trim();
         if (name.Length == 0) { Status = "✗ event name must not be empty"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddEvent(name)))
         {
             NewEventName = "";
@@ -108,7 +108,7 @@ public sealed partial class EventSpawnsVm : RawXmlEditorVm
     {
         if (SelectedEvent is not { } ev) { Status = "✗ select an event to remove"; return; }
         if (!_confirm($"Remove the event \"{ev.Name}\" and all its spawn positions?")) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveEvent(ev.Name))) ReloadView();
     }
 
@@ -118,7 +118,7 @@ public sealed partial class EventSpawnsVm : RawXmlEditorVm
         if (!TryDouble(xText, out var x)) { Status = "✗ X must be a number"; return; }
         if (!TryDouble(zText, out var z)) { Status = "✗ Z must be a number"; return; }
         if (!TryDouble(string.IsNullOrWhiteSpace(aText) ? "0" : aText, out var a)) { Status = "✗ angle must be a number"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddPos(ev.Name, x, z, a)))
         {
             LoadPositions();
@@ -129,7 +129,7 @@ public sealed partial class EventSpawnsVm : RawXmlEditorVm
     public void RemovePos(EventPosVm? pos)
     {
         if (SelectedEvent is not { } ev || pos is null) { Status = "✗ select a position to remove"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemovePos(ev.Name, pos.Index)))
         {
             LoadPositions();
@@ -143,7 +143,7 @@ public sealed partial class EventSpawnsVm : RawXmlEditorVm
         if (!TryDouble(pos.XText, out var x)) { Status = "✗ X must be a number"; return; }
         if (!TryDouble(pos.ZText, out var z)) { Status = "✗ Z must be a number"; return; }
         if (!TryDouble(pos.AText, out var a)) { Status = "✗ angle must be a number"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (!Report(_svc.SetPos(ev.Name, pos.Index, x, z, a))) LoadPositions();
     }
 }

@@ -190,7 +190,7 @@ public sealed partial class EventsVm : RawXmlEditorVm
     {
         var name = (NewEventName ?? "").Trim();
         if (name.Length == 0) { Status = "✗ event name must not be empty"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddEvent(name)))
         {
             NewEventName = "";
@@ -203,7 +203,7 @@ public sealed partial class EventsVm : RawXmlEditorVm
     {
         if (SelectedEvent is not { } row) { Status = "✗ select an event to remove"; return; }
         if (!_confirm($"Remove the event \"{row.Name}\" and all its children?")) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveEvent(row.Name))) LoadKeepingSelection();
     }
 
@@ -212,7 +212,7 @@ public sealed partial class EventsVm : RawXmlEditorVm
         if (SelectedEvent is not { } row) { Status = "✗ select an event to rename"; return; }
         newName = (newName ?? "").Trim();
         if (newName.Length == 0) { Status = "✗ new name must not be empty"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RenameEvent(row.Name, newName)))
         {
             LoadKeepingSelection();
@@ -239,7 +239,7 @@ public sealed partial class EventsVm : RawXmlEditorVm
     {
         if (_suspendDetailPersist || SelectedEvent is not { } row) return;
         if (!TryInt(rawValue, out var value)) { Status = $"✗ {field} must be a non-negative integer"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetScalar(row.Name, field, value)))
         {
             // Update the master-row summary column too (for nominal, active).
@@ -265,14 +265,14 @@ public sealed partial class EventsVm : RawXmlEditorVm
     public void SaveFlag(string flag, bool value)
     {
         if (_suspendDetailPersist || SelectedEvent is not { } row) return;
-        PushUndo();
+        if (!PushUndo()) return;
         Report(_svc.SetFlag(row.Name, flag, value));
     }
 
     public void SavePosition(string position)
     {
         if (_suspendDetailPersist || SelectedEvent is not { } row) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetPosition(row.Name, position ?? "")))
             WarnUnknownEnum(position, "position", "fixed", "player");
     }
@@ -280,7 +280,7 @@ public sealed partial class EventsVm : RawXmlEditorVm
     public void SaveLimit(string limit)
     {
         if (_suspendDetailPersist || SelectedEvent is not { } row) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetLimit(row.Name, limit ?? "")))
             WarnUnknownEnum(limit, "limit", "custom", "child", "parent", "mixed");
     }
@@ -288,7 +288,7 @@ public sealed partial class EventsVm : RawXmlEditorVm
     public void SaveActive(bool active)
     {
         if (_suspendDetailPersist || SelectedEvent is not { } row) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetActive(row.Name, active))) RefreshMasterRow(row.Name);
     }
 
@@ -320,7 +320,7 @@ public sealed partial class EventsVm : RawXmlEditorVm
         if (!TryInt(NewChildLootMin, out var lootMin)) { Status = "✗ lootmin must be a non-negative integer"; return; }
         if (!TryInt(NewChildLootMax, out var lootMax)) { Status = "✗ lootmax must be a non-negative integer"; return; }
 
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddChild(row.Name, new EventChild(type, min, max, lootMin, lootMax))))
         {
             NewChildType = "";
@@ -332,7 +332,7 @@ public sealed partial class EventsVm : RawXmlEditorVm
     public void RemoveChild(EventChildRowVm? child)
     {
         if (SelectedEvent is not { } row || child is null) { Status = "✗ select a child to remove"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveChild(row.Name, child.Type)))
         {
             LoadDetailForSelected();
@@ -350,7 +350,7 @@ public sealed partial class EventsVm : RawXmlEditorVm
         if (!TryInt(child.LootMinText, out var lootMin)) { Status = "✗ lootmin must be a non-negative integer — reverting"; LoadDetailForSelected(); return; }
         if (!TryInt(child.LootMaxText, out var lootMax)) { Status = "✗ lootmax must be a non-negative integer — reverting"; LoadDetailForSelected(); return; }
 
-        PushUndo();
+        if (!PushUndo()) return;
         var updated = new EventChild(child.Type, min, max, lootMin, lootMax);
         if (Report(_svc.SetChild(row.Name, child.OriginalType, updated)))
         {

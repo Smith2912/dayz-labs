@@ -13,7 +13,36 @@ namespace Dzl.Core.Build;
 /// per-run memo keyed by (path, size, mtime) keeps rehashing cheap.</remarks>
 public static class BuildCache
 {
-    public sealed record Entry(string Hash, string Pbo, DateTime UpdatedUtc);
+    public sealed record Entry(string Hash, string Pbo, DateTime UpdatedUtc,
+        string? PboSha256 = null, string? SignatureSha256 = null);
+
+    public static string OutputDigest(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream));
+    }
+
+    /// <summary>Reuse only the output and signature whose recorded contents still match.</summary>
+    public static bool CachedOutputMatches(Entry entry, string addonsDir, bool sign)
+    {
+        try
+        {
+            if (!string.Equals(Path.GetDirectoryName(Path.GetFullPath(entry.Pbo)), Path.GetFullPath(addonsDir), StringComparison.OrdinalIgnoreCase) ||
+                string.IsNullOrEmpty(entry.PboSha256) || !File.Exists(entry.Pbo) || OutputDigest(entry.Pbo) != entry.PboSha256) return false;
+            if (!sign) return true;
+            if (string.IsNullOrEmpty(entry.SignatureSha256)) return false;
+            return Directory.EnumerateFiles(addonsDir, Path.GetFileName(entry.Pbo) + ".*.bisign")
+                .Any(file => OutputDigest(file) == entry.SignatureSha256);
+        }
+        catch { return false; }
+    }
+
+    public static string SettingsFingerprint(string modDir, bool binarize, bool sign,
+        string? binarizer, string? converter, string? signer, string? key,
+        Dictionary<string, string>? memo = null) =>
+        $"v=2;binarize={binarize};sign={sign};prefix={PathResolver.ReadPrefix(modDir)};" +
+        $"exe={Fingerprint(binarizer, memo)};cfgconvert={Fingerprint(converter, memo)};" +
+        $"signer={(sign ? Fingerprint(signer, memo) : "off")};key={(sign ? Fingerprint(key, memo) : "off")}";
 
     private sealed record CacheFile(Dictionary<string, Entry> Mods);
 
@@ -100,7 +129,8 @@ public static class BuildCache
             using var fs = File.OpenRead(path);
             hash = Convert.ToHexString(SHA1.HashData(fs)).ToLowerInvariant();
         }
-        catch { hash = "unreadable"; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        { throw new IOException($"Cannot hash build input '{path}'.", ex); }
         if (memo is not null) memo[key] = hash;
         return hash;
     }

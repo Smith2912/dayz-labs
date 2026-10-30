@@ -13,6 +13,9 @@ permissions:
 
 jobs:
   release:
+    # Fork publication is disabled until its owner explicitly configures its
+    # distribution channel and package identity.
+    if: ${{ vars.DZL_RELEASE_REPOSITORY == github.repository && vars.DZL_RELEASE_REPOSITORY != '' }}
     runs-on: windows-latest
     # secrets can't be used in `if:` directly — surface presence as an env flag (VT is optional).
     env:
@@ -27,6 +30,14 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+
+      - name: Run core and tray tests
+        shell: pwsh
+        run: |
+          dotnet test tests/Dzl.Core.Tests -c Release
+          if ($LASTEXITCODE -ne 0) { throw "Core tests failed ($LASTEXITCODE)" }
+          dotnet test tests/Dzl.Tray.Tests -c Release
+          if ($LASTEXITCODE -ne 0) { throw "Tray tests failed ($LASTEXITCODE)" }
 
       - name: Derive version
         id: ver
@@ -49,9 +60,10 @@ jobs:
         run: ./scripts/pack.ps1 -Version ${{ steps.ver.outputs.value }}
 
       - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
         run: >
           vpk upload github
-          --repoUrl https://github.com/Borcioo/dayz-labs
+          --repoUrl https://github.com/${{ github.repository }}
           --token ${{ secrets.GITHUB_TOKEN }}
           --publish
           --releaseName "dzl ${{ steps.ver.outputs.value }}"
@@ -63,7 +75,7 @@ jobs:
       # on this windows-latest job; it handles the >32 MB upload flow for the ~80 MB installer.
       - name: VirusTotal scan
         id: vt
-        if: env.HAS_VT_KEY == 'true'
+        if: startsWith(github.ref, 'refs/tags/v') && env.HAS_VT_KEY == 'true'
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VT_API_KEY }}
@@ -72,7 +84,7 @@ jobs:
       # The action's update_release_body only fires on `release` events; we trigger on tag push,
       # so append the VirusTotal link to the release notes ourselves.
       - name: Append VirusTotal link to the release notes
-        if: env.HAS_VT_KEY == 'true'
+        if: startsWith(github.ref, 'refs/tags/v') && env.HAS_VT_KEY == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

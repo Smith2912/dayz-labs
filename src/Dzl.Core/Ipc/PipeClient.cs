@@ -11,18 +11,22 @@ public static class PipeClient
     // so they don't accidentally connect to a real tray instance that's running.
     public static IpcResponse? Send(IpcRequest req, int timeoutMs = 300, string? pipeName = null)
     {
+        var connected = false;
         try
         {
             using var pipe = new NamedPipeClientStream(".", pipeName ?? IpcContract.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
             pipe.Connect(timeoutMs);
+            connected = true;
             using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
             using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
             writer.WriteLine(JsonSerializer.Serialize(req, IpcContract.Json));
-            var line = reader.ReadLine();
-            return line is null ? null : JsonSerializer.Deserialize<IpcResponse>(line, IpcContract.Json);
+            var line = reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
+            return line is null ? new IpcResponse(false, "Automation connection closed after delivery; outcome is unknown.", null)
+                : JsonSerializer.Deserialize<IpcResponse>(line, IpcContract.Json) ?? new IpcResponse(false, "Empty automation response.", null);
         }
-        catch (TimeoutException) { return null; }
-        catch (IOException) { return null; }
+        catch (TimeoutException) { return connected ? new IpcResponse(false, "Automation response timed out; outcome is unknown.", null) : null; }
+        catch (IOException) { return connected ? new IpcResponse(false, "Automation connection failed after delivery; outcome is unknown.", null) : null; }
+        catch (JsonException) { return new IpcResponse(false, "Invalid automation response; outcome is unknown.", null); }
     }
 
     public static bool IsServerUp(string? pipeName = null) => Send(new IpcRequest(IpcMethods.Status, null), pipeName: pipeName) is not null;

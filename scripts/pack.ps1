@@ -22,8 +22,11 @@ $common = @('-c', 'Release', '-r', 'win-x64', '--self-contained', 'true',
             '-p:PublishSingleFile=false', "-p:Version=$Version")
 $mcpDir = Join-Path $publish 'mcp'
 dotnet publish (Join-Path $root 'src\Dzl.Cli')  @common -o $publish
+if ($LASTEXITCODE -ne 0) { throw "CLI publish failed (exit $LASTEXITCODE)" }
 dotnet publish (Join-Path $root 'src\Dzl.Tray') @common -o $publish
+if ($LASTEXITCODE -ne 0) { throw "Tray publish failed (exit $LASTEXITCODE)" }
 dotnet publish (Join-Path $root 'src\Dzl.Mcp')  @common -o $mcpDir
+if ($LASTEXITCODE -ne 0) { throw "MCP publish failed (exit $LASTEXITCODE)" }
 
 # Friendly apphost names (renaming a published apphost .exe is safe - it locates its managed
 # .dll by an embedded name, independent of the .exe filename).

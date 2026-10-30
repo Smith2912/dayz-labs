@@ -11,14 +11,13 @@ agent like Claude can drive it), and a WPF system-tray app.
 
 ## Download
 
-**[⬇ Download the installer — `DayZLabs-win-Setup.exe`](https://github.com/Borcioo/dayz-labs/releases/latest/download/DayZLabs-win-Setup.exe)**  ·  [all releases](https://github.com/Borcioo/dayz-labs/releases)
+Check this fork's [releases](https://github.com/Smith2912/dayz-labs/releases) for independently published builds. The original project's releases remain available from [Borcioo/dayz-labs](https://github.com/Borcioo/dayz-labs/releases).
 
 - **Per-user install, no admin.** Lands in `%LocalAppData%\DayZLabs` and adds the `dzl` command to your PATH.
-- **Auto-updates** from GitHub Releases — the tray checks on launch and offers to update itself.
+- **Automatic updates are disabled in this fork** until its package identity and update channel are configured and qualified.
 - **Self-contained** — you do **not** need the .NET runtime to run it.
-- **Unsigned (early release):** Windows SmartScreen shows an "unknown publisher" prompt on first run —
-  click *More info → Run anyway*. Every release is **scanned on VirusTotal** (link in the release notes),
-  so you can verify the binary is clean.
+- **Unsigned (early release):** Windows SmartScreen may show an "unknown publisher" prompt on first run.
+  VirusTotal scanning is optional in the release workflow; check each release's notes for its scan status.
 - Uninstall from **Settings → Apps**, or the tray's **Uninstall dzl…** (with an option to also remove
   your settings). Your mod project folders and signing keys are never touched.
 

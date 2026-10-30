@@ -1,6 +1,7 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Dzl.Core.App;
 
 namespace Dzl.Tray.Controls;
 
@@ -73,6 +74,8 @@ public abstract partial class RawXmlEditorVm : ObservableObject
             return;
 
         _loaded = true;
+        _sessionFile = _filePath();
+        if (_readRaw.Target is CeFileService service) service.BindEditorSession(_sessionFile);
         _undo.Clear();
         _undoSel.Clear();
         _redo.Clear();
@@ -85,6 +88,7 @@ public abstract partial class RawXmlEditorVm : ObservableObject
     }
 
     private bool _loaded;
+    private string? _sessionFile;
 
     /// <summary>Load the view the FIRST time the tab is shown; re-activating an already-loaded tab is a
     /// no-op. This is the tab-activation entry point — it must never re-read the file or drop the in-progress
@@ -112,6 +116,7 @@ public abstract partial class RawXmlEditorVm : ObservableObject
     private readonly List<string?> _undoSel = new();   // selection token captured alongside each undo snapshot
     private readonly List<string> _redo = new();
     private readonly List<string?> _redoSel = new();
+    private string? _historyFile;
 
     public bool CanUndo => _undo.Count > 0;
     public bool CanRedo => _redo.Count > 0;
@@ -135,28 +140,56 @@ public abstract partial class RawXmlEditorVm : ObservableObject
 
     /// <summary>Snapshot the current file (and the current selection) before a mutation so it can be undone.
     /// Call right before every service write. Also invalidates the parsed-model cache for the write that follows.</summary>
-    protected void PushUndo()
+    protected bool PushUndo()
     {
+        var currentFile = _filePath();
+        if (!_loaded)
+        {
+            _loaded = true; _sessionFile = currentFile;
+            if (_readRaw.Target is CeFileService service) service.BindEditorSession(_sessionFile);
+        }
+        if (!string.Equals(_sessionFile, currentFile, StringComparison.OrdinalIgnoreCase))
+        {
+            Status = "✗ The active mission changed; reload this editor before making changes.";
+            return false;
+        }
         InvalidateModelCache();
         var raw = _readRaw();
-        if (raw is null) return;
+        if (raw is null) return true;
+        if ((_undo.Count > 0 || _redo.Count > 0) &&
+            !string.Equals(_historyFile, currentFile, StringComparison.OrdinalIgnoreCase))
+        {
+            // The existing history belongs to the previous mission. Never mix it
+            // with snapshots from a newly selected mission.
+            _undo.Clear(); _undoSel.Clear(); _redo.Clear(); _redoSel.Clear();
+        }
+        _historyFile = currentFile;
         _undo.Add(raw);
         _undoSel.Add(CaptureSelectionToken());
         if (_undo.Count > UndoCap) { _undo.RemoveAt(0); _undoSel.RemoveAt(0); }
         _redo.Clear();
         _redoSel.Clear();
         NotifyHistory();
+        return true;
     }
 
     [RelayCommand(CanExecute = nameof(CanUndo))]
     private void Undo()
     {
         if (_undo.Count == 0) return;
+        if (!string.Equals(_historyFile, _filePath(), StringComparison.OrdinalIgnoreCase))
+        {
+            Status = "✗ The active mission changed; return to the original mission to undo.";
+            return;
+        }
         var cur = _readRaw();
-        var prev = _undo[^1]; _undo.RemoveAt(_undo.Count - 1);
-        var prevSel = _undoSel[^1]; _undoSel.RemoveAt(_undoSel.Count - 1);
-        if (cur is not null) { _redo.Add(cur); _redoSel.Add(CaptureSelectionToken()); }
+        var prev = _undo[^1];
+        var prevSel = _undoSel[^1];
+        var currentSel = CaptureSelectionToken();
         var (ok, msg) = _writeRaw(prev);
+        if (!ok) { Status = "✗ " + msg; return; }
+        _undo.RemoveAt(_undo.Count - 1); _undoSel.RemoveAt(_undoSel.Count - 1);
+        if (cur is not null) { _redo.Add(cur); _redoSel.Add(currentSel); }
         Status = ok ? "↶ undo" : "✗ " + msg;
         InvalidateModelCache();
         ReloadView();
@@ -168,11 +201,19 @@ public abstract partial class RawXmlEditorVm : ObservableObject
     private void Redo()
     {
         if (_redo.Count == 0) return;
+        if (!string.Equals(_historyFile, _filePath(), StringComparison.OrdinalIgnoreCase))
+        {
+            Status = "✗ The active mission changed; return to the original mission to redo.";
+            return;
+        }
         var cur = _readRaw();
-        var next = _redo[^1]; _redo.RemoveAt(_redo.Count - 1);
-        var nextSel = _redoSel[^1]; _redoSel.RemoveAt(_redoSel.Count - 1);
-        if (cur is not null) { _undo.Add(cur); _undoSel.Add(CaptureSelectionToken()); }
+        var next = _redo[^1];
+        var nextSel = _redoSel[^1];
+        var currentSel = CaptureSelectionToken();
         var (ok, msg) = _writeRaw(next);
+        if (!ok) { Status = "✗ " + msg; return; }
+        _redo.RemoveAt(_redo.Count - 1); _redoSel.RemoveAt(_redoSel.Count - 1);
+        if (cur is not null) { _undo.Add(cur); _undoSel.Add(currentSel); }
         Status = ok ? "↷ redo" : "✗ " + msg;
         InvalidateModelCache();
         ReloadView();

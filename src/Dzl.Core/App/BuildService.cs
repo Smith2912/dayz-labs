@@ -270,9 +270,15 @@ public sealed class BuildService
         Directory.CreateDirectory(addonsDir);
 
         var (stateHash, cache, skip) = TryCacheSkip(modName, projectDir, exe.ExePath, buildDir, addonsDir,
-            binarize, sign, force, signKey, preflight, onLine);
+            binarize, sign, force, signKey, preflight, onLine, cfg.DayzToolsPath);
         if (skip is not null)
-            return skip;
+        {
+            var linkFail = EnsureJunctions(modName, workDriveSource, projectDir, root, preflight);
+            if (linkFail is not null) return linkFail;
+            if (sign) ShipPublicKey(cfg, root, modName, effectiveKey);
+            var (cachedRegistered, cachedNote) = RegisterInRunList(cfg, active, modName);
+            return skip with { Registered = cachedRegistered, Message = "reused cached build; " + cachedNote };
+        }
 
         var junctionFail = EnsureJunctions(modName, workDriveSource, projectDir, root, preflight);
         if (junctionFail is not null)
@@ -559,19 +565,25 @@ public sealed class BuildService
     private (string stateHash, Dictionary<string, BuildCache.Entry> cache, BuildResult? skip) TryCacheSkip(
         string modName, string projectDir, string exePath, string buildDir, string addonsDir,
         bool binarize, bool sign, bool force, string? signKey,
-        PreflightView? preflight, Action<string>? onLine)
+        PreflightView? preflight, Action<string>? onLine, string toolsDir)
     {
         var sha1Memo = new Dictionary<string, string>();
-        var settingsFingerprint =
-            $"binarize={binarize};sign={sign};" +
-            $"exe={BuildCache.Fingerprint(exePath, sha1Memo)};" +
-            $"key={(sign ? BuildCache.Fingerprint(signKey, sha1Memo) : "off")}";
-        var stateHash = BuildCache.ComputeStateHash(projectDir,
-            PreflightOptions.DefaultExcludes, settingsFingerprint, sha1Memo);
         var cache = BuildCache.Load(ConfigDir);
+        string stateHash;
+        try
+        {
+            var settingsFingerprint = BuildCache.SettingsFingerprint(projectDir, binarize, sign, exePath,
+                ToolCatalog.Find(toolsDir, "cfgconvert")?.ExePath,
+                ToolCatalog.Find(toolsDir, "dssignfile")?.ExePath, signKey, sha1Memo);
+            stateHash = BuildCache.ComputeStateHash(projectDir, PreflightOptions.DefaultExcludes, settingsFingerprint, sha1Memo);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            onLine?.Invoke($"build cache unavailable: {ex.Message}; rebuilding");
+            return ("", cache, null);
+        }
         if (!force && cache.TryGetValue(modName, out var cached) && cached.Hash == stateHash &&
-            File.Exists(cached.Pbo) &&
-            (!sign || Directory.EnumerateFiles(addonsDir, Path.GetFileName(cached.Pbo) + ".*.bisign").Any()))
+            BuildCache.CachedOutputMatches(cached, addonsDir, sign))
         {
             onLine?.Invoke($"skip: no changes since last build ({cached.UpdatedUtc:u})");
             return (stateHash, cache, new BuildResult(true, modName, buildDir, cached.Pbo, false,
@@ -611,7 +623,14 @@ public sealed class BuildService
         var pbo = Path.Combine(addonsDir, Path.GetFileName(workPbo));
         ModBuild.WriteMarker(ProjectPaths.BuildMarkerPath(root, modName), $"dzl-built {startUtc:O} from {projectDir}");
 
-        cache[modName] = new BuildCache.Entry(stateHash, pbo, DateTime.UtcNow);
+        try
+        {
+            var signature = PboHeader.FindSignature(pbo);
+            if (stateHash.Length == 0) cache.Remove(modName);
+            else cache[modName] = new BuildCache.Entry(stateHash, pbo, DateTime.UtcNow,
+                BuildCache.OutputDigest(pbo), signature is null ? null : BuildCache.OutputDigest(signature));
+        }
+        catch { cache.Remove(modName); /* a build without a trustworthy receipt cannot be reused */ }
         BuildCache.Save(ConfigDir, cache);
         return (pbo, null);
     }

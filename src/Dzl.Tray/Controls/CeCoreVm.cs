@@ -106,7 +106,7 @@ public sealed partial class CeCoreVm : RawXmlEditorVm
         if (_suspend) return;
         var value = d.IsBool ? (d.Flag ? "true" : "false") : (d.Text ?? "").Trim();
         if (!d.IsBool && !TryNum(value)) { Status = $"✗ {d.Name} must be a number"; ReloadView(); return; }
-        PushUndo();
+        if (!PushUndo()) return;
         Report(_svc.SetDefault(d.Name, value));
     }
 
@@ -116,7 +116,7 @@ public sealed partial class CeCoreVm : RawXmlEditorVm
         var name = (SelectedMissingDefault ?? "").Trim();
         if (name.Length == 0) { Status = "✗ pick a default to add"; return; }
         if (CeCoreDefaults.Find(name) is not { } def) { Status = $"✗ \"{name}\" is not a known default"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.SetDefault(def.Name, def.Default))) ReloadView();
     }
 
@@ -127,7 +127,7 @@ public sealed partial class CeCoreVm : RawXmlEditorVm
         var name = (NewFileName ?? "").Trim();
         if (folder.Length == 0) { Status = "✗ folder must not be empty"; return; }
         if (name.Length == 0) { Status = "✗ file name must not be empty"; return; }
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.AddFile(folder, name, NewFileType ?? "types")))
         {
             NewFileName = "";
@@ -139,7 +139,7 @@ public sealed partial class CeCoreVm : RawXmlEditorVm
     {
         if (file is null) { Status = "✗ select a file to remove"; return; }
         if (!_confirm($"Unregister \"{file.Folder}/{file.Name}\" from cfgeconomycore?")) return;
-        PushUndo();
+        if (!PushUndo()) return;
         if (Report(_svc.RemoveFile(file.Folder, file.Name))) ReloadView();
     }
 }

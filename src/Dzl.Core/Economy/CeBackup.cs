@@ -14,6 +14,44 @@ public static class CeBackup
 
     private static int _seq;   // uniquifier so two snapshots within the same millisecond don't collide
 
+    /// <summary>Serialize cooperating dzl writers for one canonical CE path.</summary>
+    public static IDisposable LockFiles(IEnumerable<string> files)
+    {
+        var locks = new List<Mutex>();
+        try
+        {
+            foreach (var path in files.Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase)
+                         .OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+            {
+                var key = OperatingSystem.IsWindows() ? path.ToUpperInvariant() : path;
+                var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(key)));
+                var mutex = new Mutex(false, "dzl-ce-" + hash);
+                try
+                {
+                    try { if (!mutex.WaitOne(TimeSpan.FromSeconds(15))) throw new TimeoutException("Timed out waiting for the CE file lock."); }
+                    catch (AbandonedMutexException) { /* lock acquired after an interrupted writer */ }
+                    locks.Add(mutex);
+                }
+                catch { mutex.Dispose(); throw; }
+            }
+            return new FileLocks(locks);
+        }
+        catch
+        {
+            foreach (var mutex in locks.AsEnumerable().Reverse()) { mutex.ReleaseMutex(); mutex.Dispose(); }
+            throw;
+        }
+    }
+
+    private sealed class FileLocks(List<Mutex> locks) : IDisposable
+    {
+        public void Dispose()
+        {
+            foreach (var mutex in locks.AsEnumerable().Reverse()) { mutex.ReleaseMutex(); mutex.Dispose(); }
+            locks.Clear();
+        }
+    }
+
     internal static string BackupDir(string filePath)
     {
         var dir = Path.GetDirectoryName(filePath) ?? ".";
@@ -25,11 +63,28 @@ public static class CeBackup
     private static string Ext(string filePath)  => Path.GetExtension(filePath);
 
     /// <summary>Snapshot the current file (if any). Prunes the backup folder to <see cref="Keep"/> afterwards.</summary>
-    public static void Snapshot(string filePath) => SnapshotWithId(filePath, id: null);
+    public static void Snapshot(string filePath)
+    {
+        if (!File.Exists(filePath)) return;
+        if (SnapshotWithId(filePath, id: null) == "")
+            throw new IOException($"Could not create a backup of '{filePath}'; the file was not saved.");
+    }
+
+    /// <summary>Stage a complete replacement next to the target before replacing it.</summary>
+    public static void WriteTextAtomically(string filePath, string text)
+    {
+        var temp = filePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(temp, text);
+            File.Move(temp, filePath, overwrite: true);
+        }
+        finally { if (File.Exists(temp)) File.Delete(temp); }
+    }
 
     /// <summary>Snapshot with a caller-supplied id (used by <see cref="TypesBackup"/> for deterministic test stamps).
     /// When <paramref name="id"/> is null a unique timestamped id is generated.</summary>
-    internal static string SnapshotWithId(string filePath, string? id)
+    internal static string SnapshotWithId(string filePath, string? id, bool prune = true)
     {
         try
         {
@@ -50,7 +105,7 @@ public static class CeBackup
                 dst = Path.Combine(dir, $"{Stem(filePath)}.{id}-{i}{Ext(filePath)}");
 
             File.Copy(filePath, dst);
-            Prune(filePath, dir);
+            if (prune) Prune(filePath, dir);
             return dst;
         }
         catch { return ""; }
@@ -87,23 +142,41 @@ public static class CeBackup
     {
         try
         {
+            using var guard = LockFiles(new[] { filePath });
             var dir = BackupDir(filePath);
             var backupFile = Path.Combine(dir, $"{Stem(filePath)}.{id}{Ext(filePath)}");
             if (!File.Exists(backupFile)) return false;
-            Snapshot(filePath);
-            File.Copy(backupFile, filePath, overwrite: true);
+            // Read the selected point before making a pre-restore snapshot. Pruning
+            // cannot remove it while a restore is in progress.
+            var selected = File.ReadAllBytes(backupFile);
+            var previous = File.Exists(filePath) ? SnapshotWithId(filePath, id: null, prune: false) : "";
+            if (File.Exists(filePath) && previous == "") return false;
+            var tmp = filePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllBytes(tmp, selected);
+                File.Move(tmp, filePath, overwrite: true);
+            }
+            finally { if (File.Exists(tmp)) File.Delete(tmp); }
+            Prune(filePath, dir, new[] { backupFile, previous }.Where(p => p.Length > 0));
             return true;
         }
         catch { return false; }
     }
 
-    private static void Prune(string filePath, string dir)
+    private static void Prune(string filePath, string dir, IEnumerable<string>? protectedFiles = null)
     {
         var stem   = Stem(filePath);
         var ext    = Ext(filePath);
         var files  = Directory.EnumerateFiles(dir, $"{stem}.*{ext}")
             .OrderByDescending(f => File.GetLastWriteTime(f)).ToList();
-        foreach (var old in files.Skip(Keep))
+        var keep = (protectedFiles ?? Array.Empty<string>()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in files)
+        {
+            if (keep.Count >= Keep) break;
+            keep.Add(file);
+        }
+        foreach (var old in files.Where(f => !keep.Contains(f)))
             try { File.Delete(old); } catch { /* best-effort */ }
     }
 }

@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using System.Security.Cryptography;
 using Dzl.Core.Config;
 using Dzl.Core.Economy;
 using Dzl.Core.Economy.Lint;
@@ -8,6 +9,8 @@ namespace Dzl.Core.App;
 /// <summary>One Types entry plus the origin/source of the CE file it came from (for source-aware
 /// listing/filtering in the CLI/MCP/tray).</summary>
 public sealed record TypeRow(TypeEntry Entry, CeOrigin Origin, string ModSource);
+public sealed record TypesSnapshot(string? Primary, IReadOnlyDictionary<string, string> Revisions,
+    IReadOnlyList<TypeRow> Rows, IReadOnlyList<string> Errors);
 
 /// <summary>
 /// Central Economy editor over ALL Types files of the active mission — the vanilla <c>db\types.xml</c>
@@ -69,17 +72,28 @@ public sealed class TypesService
 
     /// <summary>Like <see cref="List"/> but each entry carries the origin + mod source of its file.</summary>
     public List<TypeRow> Rows()
+        => LoadSnapshot().Rows.ToList();
+
+    /// <summary>Capture the successfully parsed file set and exact byte revisions for a later save.</summary>
+    public TypesSnapshot LoadSnapshot()
     {
         var rows = new List<TypeRow>();
-        foreach (var fileRef in ResolveTypesFiles())
+        var revisions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var errors = new List<string>();
+        var (files, primary) = ResolveAll();
+        foreach (var fileRef in files)
         {
-            List<TypeEntry> entries;
-            try { entries = TypesXml.Parse(File.ReadAllText(fileRef.Path), fileRef.Path); }
-            catch { continue; }   // skip the bad file
-            foreach (var e in entries)
-                rows.Add(new TypeRow(e, fileRef.Origin, fileRef.ModSource));
+            try
+            {
+                var bytes = File.ReadAllBytes(fileRef.Path);
+                using var reader = new StreamReader(new MemoryStream(bytes), detectEncodingFromByteOrderMarks: true);
+                var entries = TypesXml.Parse(reader.ReadToEnd(), fileRef.Path);
+                revisions.Add(fileRef.Path, Convert.ToHexString(SHA256.HashData(bytes)));
+                foreach (var e in entries) rows.Add(new TypeRow(e, fileRef.Origin, fileRef.ModSource));
+            }
+            catch (Exception ex) { errors.Add($"{fileRef.Path}: {ex.Message}"); }
         }
-        return rows;
+        return new TypesSnapshot(primary, revisions, rows, errors);
     }
 
     /// <summary>Valid usage/value/tag/category names from the mission's <c>cfglimitsdefinition.xml</c>
@@ -114,14 +128,34 @@ public sealed class TypesService
     /// <summary>Sync every resolved Types file to the edited set: entries are grouped by their
     /// <see cref="TypeEntry.SourceFile"/> and each target file is pruned, upserted, snapshotted,
     /// and written back. Ok only when no file failed.</summary>
-    /// <remarks>An empty or orphan SourceFile (a path not in the resolved CE set) routes to the
-    /// primary file, preventing writes to stray paths the server never loads.</remarks>
-    public OpResult SaveAll(IReadOnlyList<TypeEntry> entries)
+    /// <remarks>An empty SourceFile routes to the primary file. A non-empty path outside the
+    /// loaded file set is rejected so stale rows cannot be written to a different mission.</remarks>
+    public OpResult SaveAll(IReadOnlyList<TypeEntry> entries) => SaveAll(entries, LoadSnapshot());
+
+    public OpResult SaveAll(IReadOnlyList<TypeEntry> entries, TypesSnapshot snapshot)
     {
+        using var configGuard = Dzl.Core.Launch.StateFile.AcquireLock(_configPath);
         var (resolved, primary) = ResolveAll();
         if (primary is null) return new(false, "no types.xml files resolved");
+        if (snapshot.Errors.Count > 0) return new(false, "some types files could not be loaded; no files were saved");
+        if (!string.Equals(primary, snapshot.Primary, StringComparison.OrdinalIgnoreCase) ||
+            !new HashSet<string>(resolved.Select(f => f.Path), StringComparer.OrdinalIgnoreCase).SetEquals(snapshot.Revisions.Keys))
+            return new(false, "types file set or active mission changed; reload before saving");
+        if (entries.Any(e => !string.IsNullOrEmpty(e.SourceFile) && !snapshot.Revisions.ContainsKey(e.SourceFile)))
+            return new(false, "a row refers to a file outside the loaded types set");
+        IDisposable fileLocks;
+        try { fileLocks = CeBackup.LockFiles(snapshot.Revisions.Keys); }
+        catch (Exception ex) { return new(false, $"could not lock types files: {ex.Message}"); }
+        using var guard = fileLocks;
+        try
+        {
+            foreach (var (file, revision) in snapshot.Revisions)
+                if (!File.Exists(file) || Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file))) != revision)
+                    return new(false, $"{Path.GetFileName(file)} changed since it was loaded; reload before saving");
+        }
+        catch (Exception ex) { return new(false, $"could not verify loaded types files: {ex.Message}"); }
 
-        var valid = new HashSet<string>(resolved.Select(r => r.Path), StringComparer.OrdinalIgnoreCase) { primary };
+        var valid = new HashSet<string>(snapshot.Revisions.Keys, StringComparer.OrdinalIgnoreCase);
         var groups = entries.GroupBy(e =>
             string.IsNullOrEmpty(e.SourceFile) ? primary
             : valid.Contains(e.SourceFile) ? e.SourceFile
@@ -130,9 +164,10 @@ public sealed class TypesService
 
         var saved = new List<string>();
         var failed = new List<string>();
-        foreach (var g in groups)
+        var byFile = groups.ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+        foreach (var file in valid)
         {
-            var file = g.Key;
+            var g = byFile.TryGetValue(file, out var rows) ? rows : new List<TypeEntry>();
             try
             {
                 var doc = File.Exists(file)
@@ -143,7 +178,7 @@ public sealed class TypesService
                     if (!keep.Contains(t.Attribute("name")?.Value ?? "")) t.Remove();
                 foreach (var e in g) TypesXml.Upsert(doc, e);
                 CeBackup.Snapshot(file);
-                File.WriteAllText(file, TypesXml.ToXml(doc));
+                CeBackup.WriteTextAtomically(file, TypesXml.ToXml(doc));
                 saved.Add(Path.GetFileName(file));
             }
             catch { failed.Add(Path.GetFileName(file)); }
@@ -159,14 +194,18 @@ public sealed class TypesService
     /// <summary>Set/insert one type with nullable overrides (CLI/MCP). Writes to the entry's existing
     /// source file if the type already exists, else to <paramref name="file"/> if given, else the primary
     /// file. Unspecified fields keep their current value (or the default for a new entry).
-    /// <para><b>Not concurrency-safe:</b> concurrent calls may interleave reads and writes; callers
-    /// must serialize if needed.</para></summary>
+    /// <para>Cooperating dzl writers serialize these edits; external editors do not share the lock.</para></summary>
     public OpResult Set(string name, int? nominal = null, int? min = null, int? lifetime = null,
                        int? restock = null, int? cost = null, string? category = null, string? file = null)
     {
+        using var configGuard = Dzl.Core.Launch.StateFile.AcquireLock(_configPath);
         if (string.IsNullOrWhiteSpace(name)) return new(false, "type name required");
 
         var (resolved, primary) = ResolveAll();
+        IDisposable fileLocks;
+        try { fileLocks = CeBackup.LockFiles(resolved.Select(f => f.Path)); }
+        catch (Exception ex) { return new(false, $"could not lock types files: {ex.Message}"); }
+        using var guard = fileLocks;
 
         // Probe in resolved order — the first file containing the name wins. Parsed docs are kept
         // so the edit below reuses them; malformed files are skipped exactly like Rows() skips them.
@@ -226,7 +265,7 @@ public sealed class TypesService
             };
             CeBackup.Snapshot(target);
             TypesXml.Upsert(doc, merged);
-            File.WriteAllText(target, TypesXml.ToXml(doc));
+            CeBackup.WriteTextAtomically(target, TypesXml.ToXml(doc));
             return new(true, el != null ? $"updated {name}" : $"added {name}");
         }
         catch (Exception ex) { return new(false, ex.Message); }
@@ -236,8 +275,13 @@ public sealed class TypesService
     /// snapshotted first).</summary>
     public OpResult Remove(string name)
     {
+        using var configGuard = Dzl.Core.Launch.StateFile.AcquireLock(_configPath);
         var files = ResolveTypesFiles();
         if (files.Count == 0) return new(false, "no types.xml for the active server's mission");
+        IDisposable fileLocks;
+        try { fileLocks = CeBackup.LockFiles(files.Select(f => f.Path)); }
+        catch (Exception ex) { return new(false, $"could not lock types files: {ex.Message}"); }
+        using var guard = fileLocks;
 
         var removed = 0;
         var failed = new List<string>();
@@ -248,7 +292,7 @@ public sealed class TypesService
                 var doc = TypesXml.ParseDoc(File.ReadAllText(fileRef.Path));
                 if (!TypesXml.Remove(doc, name)) continue;
                 CeBackup.Snapshot(fileRef.Path);
-                File.WriteAllText(fileRef.Path, TypesXml.ToXml(doc));
+                CeBackup.WriteTextAtomically(fileRef.Path, TypesXml.ToXml(doc));
                 removed++;
             }
             catch { failed.Add(Path.GetFileName(fileRef.Path)); }

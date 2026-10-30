@@ -34,6 +34,7 @@ public partial class MainViewModel
                                                 string? baseName = null, string? modPreset = null,
                                                 bool offline = false)
     {
+        if (!CanChangeMission()) return "✗ Save the pending Types edits before changing the active mission.";
         var cp = _configPath;
         // The mission-template copy can be hundreds of MB — run it off the UI thread; the
         // active-preset reload + server-list refresh hop back afterward.
@@ -55,6 +56,7 @@ public partial class MainViewModel
     private bool SetPresetByName(string name)
     {
         if (!Profiles.List(_configPath).Contains(name)) return false;
+        if (name != ActivePreset && !CanChangeMission()) return false;
         Profiles.SetActive(name, _configPath);
         Reload();
         return true;
@@ -63,6 +65,8 @@ public partial class MainViewModel
     /// <summary>Persist edited per-server settings to the active instance, then reload.</summary>
     public void SaveActiveInstance(DzlConfig edited)
     {
+        if ((!string.Equals(edited.Mission, _cfg.Mission, StringComparison.OrdinalIgnoreCase) ||
+             !string.Equals(edited.ConfigName, _cfg.ConfigName, StringComparison.OrdinalIgnoreCase)) && !CanChangeMission()) return;
         Profiles.Save(edited, ActiveName, _configPath);
         Reload();
         RefreshServers();
@@ -72,6 +76,7 @@ public partial class MainViewModel
     public string DeleteServer(string name, bool removeFiles = false)
     {
         var wasActive = ActivePreset == name;
+        if (wasActive && !CanChangeMission()) return "✗ Save the pending Types edits before changing the active mission.";
         if (!Profiles.Delete(name, _configPath, removeFiles)) return $"✗ no server '{name}'";
         if (wasActive)
         {
@@ -88,6 +93,7 @@ public partial class MainViewModel
     /// <summary>Clone the active instance's config to a new name and activate it.</summary>
     public string CloneActive(string newName)
     {
+        if (!CanChangeMission()) return "✗ Save the pending Types edits before changing the active mission.";
         if (!ProjectPaths.IsValidName(newName)) return $"✗ invalid name: {newName}";
         if (Profiles.List(_configPath).Contains(newName)) return $"✗ '{newName}' already exists";
         Profiles.Save(_cfg, newName, _configPath);    // _cfg = the active composed config
@@ -119,6 +125,7 @@ public partial class MainViewModel
     /// <summary>Rename the active instance (copy → new name, delete old, activate new).</summary>
     public string RenameActive(string newName)
     {
+        if (!CanChangeMission()) return "✗ Save the pending Types edits before changing the active mission.";
         var old = ActiveName;
         if (!ProjectPaths.IsValidName(newName)) return $"✗ invalid name: {newName}";
         if (string.Equals(newName, old, StringComparison.OrdinalIgnoreCase)) return "✗ same name";

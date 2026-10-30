@@ -20,6 +20,8 @@ namespace Dzl.Tray.ViewModels;
 public sealed partial class TypesEditorVm : ObservableObject, IDisposable
 {
     private readonly string _configPath;
+    private string? _loadedTypesFile;
+    private TypesSnapshot? _typesSnapshot;
     // Reloads MainViewModel's Dictionaries tab after a free-add from the Types detail panel,
     // so both views of cfglimitsdefinition.xml stay in sync. Null-safe: not set in tests.
     private readonly Action? _onDictionariesChanged;
@@ -429,9 +431,11 @@ public sealed partial class TypesEditorVm : ObservableObject, IDisposable
     public void LoadTypes()
     {
         var svc = new TypesService(_configPath);
+        _typesSnapshot = svc.LoadSnapshot();
+        _loadedTypesFile = _typesSnapshot.Primary;
         Types.Clear();
         _originByFile.Clear();
-        foreach (var r in svc.Rows())
+        foreach (var r in _typesSnapshot.Rows)
         {
             _originByFile[r.Entry.SourceFile] = r.Origin;
             Types.Add(MakeRow(r));
@@ -446,7 +450,7 @@ public sealed partial class TypesEditorVm : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasTypes));
         RefreshTypesLint();
         RefreshTypesView();
-        TypesStatus = $"{Types.Count} types";
+        TypesStatus = _typesSnapshot.Errors.Count == 0 ? $"{Types.Count} types" : "✗ Some types files could not be loaded; saving is disabled.";
     }
 
     private void RefreshLimits(TypesService svc)
@@ -610,7 +614,14 @@ public sealed partial class TypesEditorVm : ObservableObject, IDisposable
     /// <summary>Persist the full edited set (snapshots a versioned backup first).</summary>
     public void SaveTypes()
     {
-        var r = new TypesService(_configPath).SaveAll(Types.Select(t => t.ToEntry()).ToList());
+        var svc = new TypesService(_configPath);
+        if (!string.Equals(_loadedTypesFile, svc.TypesFile(), StringComparison.OrdinalIgnoreCase))
+        {
+            TypesStatus = "✗ The active mission changed; return to the original mission before saving this draft.";
+            return;
+        }
+        if (_typesSnapshot is null) { TypesStatus = "✗ Load types before saving."; return; }
+        var r = svc.SaveAll(Types.Select(t => t.ToEntry()).ToList(), _typesSnapshot);
         TypesStatus = (r.Ok ? "✓ " : "✗ ") + r.Message;
         if (r.Ok) LoadTypes();
     }

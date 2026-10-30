@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text.Json;
 using Dzl.Core.Config;
+using Dzl.Core.Launch;
 
 namespace Dzl.Cli.Commands;
 
@@ -28,7 +29,9 @@ internal static class ConfigCommands
         var addRootCmd = new Command("add-root", "Add a folder to scan for mods.") { addRootArg };
         addRootCmd.SetHandler(ctx =>
         {
-            var (cfg, _, active, configPath) = c.Resolve(ctx);
+            var (_, _, _, configPath) = c.Resolve(ctx);
+            using var guard = StateFile.AcquireLock(configPath);
+            var (cfg, _, active, _) = c.Resolve(ctx);
             var folder = ctx.ParseResult.GetValueForArgument(addRootArg);
             var roots = new List<string>(cfg.ScanRoots);
             if (!roots.Contains(folder)) roots.Add(folder);
@@ -42,7 +45,9 @@ internal static class ConfigCommands
         var rmRootCmd = new Command("rm-root", "Remove a mod scan-root folder.") { rmRootArg };
         rmRootCmd.SetHandler(ctx =>
         {
-            var (cfg, _, active, configPath) = c.Resolve(ctx);
+            var (_, _, _, configPath) = c.Resolve(ctx);
+            using var guard = StateFile.AcquireLock(configPath);
+            var (cfg, _, active, _) = c.Resolve(ctx);
             var folder = ctx.ParseResult.GetValueForArgument(rmRootArg);
             var roots = cfg.ScanRoots.Where(r => !string.Equals(r, folder, StringComparison.OrdinalIgnoreCase)).ToList();
             cfg = cfg with { ScanRoots = roots };
@@ -56,7 +61,9 @@ internal static class ConfigCommands
         var setCmd = new Command("set", "Set a scalar key, e.g. dzl config set port 2402.") { setKeyArg, setValArg };
         setCmd.SetHandler(ctx =>
         {
-            var (cfg, _, active, configPath) = c.Resolve(ctx);
+            var (_, _, _, configPath) = c.Resolve(ctx);
+            using var guard = StateFile.AcquireLock(configPath);
+            var (cfg, _, active, _) = c.Resolve(ctx);
             var key = ctx.ParseResult.GetValueForArgument(setKeyArg);
             var value = ctx.ParseResult.GetValueForArgument(setValArg);
             DzlConfig updated;

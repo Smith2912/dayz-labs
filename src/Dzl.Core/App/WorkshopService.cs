@@ -100,9 +100,9 @@ public sealed class WorkshopService
         _accessCache = r.AccessToken; _accessAt = DateTime.UtcNow;
         if (!string.IsNullOrWhiteSpace(r.AccessToken)) SteamTokenStore.SaveAccess(_configPath, r.AccessToken);
         if (string.IsNullOrWhiteSpace(r.AccountName)) return;
-        var (cfg, _, active) = Profiles.ResolveActive(_configPath);
+        var (cfg, _, _) = Profiles.ResolveActive(_configPath);
         if (!string.Equals(cfg.SteamLogin, r.AccountName, StringComparison.OrdinalIgnoreCase))
-            GlobalStore.Save(cfg.GlobalPart(active) with { SteamLogin = r.AccountName }, _configPath);
+            GlobalStore.Update(_configPath, g => g with { SteamLogin = r.AccountName });
     }
 
     /// <summary>Forget the stored Steam session.</summary>
